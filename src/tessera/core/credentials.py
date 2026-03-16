@@ -15,14 +15,14 @@ except ImportError:
 
 # Canonical env variable names per service
 SERVICE_KEYS: dict[str, list[str]] = {
-    "kaggle":       ["KAGGLE_KEY"],
+    "kaggle":       ["KAGGLE_API_TOKEN"],
     "huggingface":  ["HF_TOKEN"],
     "github":       ["GITHUB_TOKEN"],
 }
 
 # Human-readable field labels per service
 SERVICE_LABELS: dict[str, list[str]] = {
-    "kaggle":       ["username:api_key"],
+    "kaggle":       ["API Token (KGAT_...)"],
     "huggingface":  ["Token"],
     "github":       ["Token (opsiyonel)"],
 }
