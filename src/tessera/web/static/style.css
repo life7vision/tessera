@@ -626,17 +626,33 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
 
 /* Sidebar */
 .ds-sidebar {
-  width: 300px;
+  width: 280px;
+  min-width: 160px;
+  max-width: 520px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--surface-2);
-  border-right: 1px solid var(--border);
+  background: var(--bg);
+  border-right: none;
 }
 
+/* Resize handle */
+.ds-resizer {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border);
+  transition: background 0.15s;
+  position: relative;
+  z-index: 10;
+}
+.ds-resizer:hover,
+.ds-resizer.dragging { background: var(--border-2); }
+
 .ds-sidebar-top {
-  padding: 1rem 0.875rem 0.75rem;
+  padding: 0.875rem 0.875rem 0.6rem;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
@@ -743,10 +759,11 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
 
 /* source dot */
 .ds-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 6px;
 }
 .ds-dot-kaggle      { background: #d4860a; }
 .ds-dot-huggingface { background: #1a7a5e; }
@@ -756,18 +773,17 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
 .ds-item-body { min-width: 0; flex: 1; }
 
 .ds-item-name {
-  font-size: 0.84rem;
+  font-size: 0.855rem;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.35;
 }
-.ds-item.selected .ds-item-name { color: var(--text); }
 
 .ds-item-sub {
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   color: var(--text-3);
   margin-top: 1px;
 }
@@ -792,6 +808,7 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
   flex: 1;
   overflow-y: auto;
   background: var(--bg);
+  min-width: 0;
 }
 
 /* empty / loading state */
