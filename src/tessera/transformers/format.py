@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from tessera.core.exceptions import TransformError
 from tessera.core.hashing import compute_file_checksum
 from tessera.transformers.base import BaseTransformer, TransformResult
 
@@ -25,10 +26,16 @@ class FormatTransformer(BaseTransformer):
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         if target_format == "original":
-            output_path.write_bytes(input_path.read_bytes())
+            try:
+                output_path.write_bytes(input_path.read_bytes())
+            except OSError as exc:
+                raise TransformError(f"Dosya kopyalanamadı: {input_path.name} — {exc}") from exc
         else:
-            dataframe = self._load_dataframe(input_path)
-            dataframe.to_parquet(output_path, index=False)
+            try:
+                dataframe = self._load_dataframe(input_path)
+                dataframe.to_parquet(output_path, index=False)
+            except Exception as exc:
+                raise TransformError(f"Format dönüşümü başarısız: {input_path.name} — {exc}") from exc
 
         return TransformResult(
             transformer_name=self.name,

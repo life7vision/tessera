@@ -6,7 +6,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tessera.core.exceptions import StorageError
+from tessera.core.exceptions import QuarantineError, StorageError
 
 
 class StorageManager:
@@ -70,10 +70,13 @@ class StorageManager:
         safe_reason = reason.strip().replace(" ", "_") or "unknown"
         destination_name = f"{timestamp}_{safe_reason}_{source.name}"
         destination = self.get_zone_path("quarantine") / dataset_name / destination_name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.exists():
-            self._remove_existing(destination)
-        return source.replace(destination)
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.exists():
+                self._remove_existing(destination)
+            return source.replace(destination)
+        except OSError as exc:
+            raise QuarantineError(f"Karantina işlemi başarısız: {source} — {exc}") from exc
 
     def get_zone_size(self, zone: str) -> int:
         """Return the total size in bytes for a zone."""
@@ -122,13 +125,17 @@ class StorageManager:
         if destination.exists():
             self._remove_existing(destination)
 
-        if source.is_dir():
-            shutil.copytree(source, destination)
-            return
+        try:
+            if source.is_dir():
+                shutil.copytree(source, destination)
+                return
 
-        temp_destination = destination.with_suffix(f"{destination.suffix}.tmp")
-        shutil.copy2(source, temp_destination)
-        temp_destination.replace(destination)
+            temp_destination = destination.with_suffix(f"{destination.suffix}.tmp")
+            shutil.copy2(source, temp_destination)
+            temp_destination.replace(destination)
+        except OSError as exc:
+            # Covers disk full (ENOSPC), permission denied (EACCES), etc.
+            raise StorageError(f"Dosya kopyalanamadı: {source} → {destination} — {exc}") from exc
 
     def _remove_existing(self, path: Path) -> None:
         if path.is_dir():

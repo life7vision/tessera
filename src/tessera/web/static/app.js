@@ -60,8 +60,74 @@ function wireLiveSearch() {
   });
 }
 
+// ── Toast notifications ────────────────────────────────────────────
+let _toastContainer = null;
+
+function getToastContainer() {
+  if (!_toastContainer) {
+    _toastContainer = document.createElement("div");
+    _toastContainer.id = "toast-container";
+    _toastContainer.style.cssText = [
+      "position:fixed", "bottom:1.25rem", "right:1.25rem",
+      "display:flex", "flex-direction:column", "gap:0.5rem",
+      "z-index:9999", "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(_toastContainer);
+  }
+  return _toastContainer;
+}
+
+function showToast(message, type = "info", duration = 4000) {
+  const colors = {
+    info:    { bg: "var(--surface)", border: "var(--border)", color: "var(--text)" },
+    success: { bg: "var(--green-bg, #1a2e20)", border: "var(--green, #4caf50)", color: "var(--green, #4caf50)" },
+    error:   { bg: "var(--red-bg, #2e1a1a)",   border: "var(--red, #e05252)",    color: "var(--red, #e05252)" },
+    warning: { bg: "var(--amber-bg, #2e2510)",  border: "#d4900a",               color: "#d4900a" },
+  };
+  const c = colors[type] || colors.info;
+
+  const toast = document.createElement("div");
+  toast.style.cssText = [
+    `background:${c.bg}`, `border:1px solid ${c.border}`, `color:${c.color}`,
+    "border-radius:8px", "padding:0.7rem 1rem", "font-size:0.85rem",
+    "max-width:320px", "box-shadow:0 4px 12px rgba(0,0,0,0.3)",
+    "pointer-events:auto", "opacity:0", "transition:opacity 0.2s",
+  ].join(";");
+  toast.textContent = message;
+
+  getToastContainer().appendChild(toast);
+  requestAnimationFrame(() => { toast.style.opacity = "1"; });
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 220);
+  }, duration);
+}
+
+// ── Date formatting ────────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("tr-TR", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function humanizeDates() {
+  document.querySelectorAll("[data-iso-date]").forEach((node) => {
+    const formatted = formatDate(node.dataset.isoDate);
+    node.textContent = formatted;
+    node.title = node.dataset.isoDate;
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   wireCopyButtons();
   humanizeSizes();
+  humanizeDates();
   wireLiveSearch();
 });

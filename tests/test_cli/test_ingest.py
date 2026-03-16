@@ -44,3 +44,28 @@ def test_init_command_creates_project(tmp_path: Path):
     assert result.exit_code == 0
     assert (tmp_path / "archive" / "config" / "default.yaml").exists()
 
+
+def test_init_command_copies_env_example(tmp_path: Path):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["init", "--path", str(tmp_path / "archive")])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "archive" / ".env.example").exists()
+
+
+def test_init_command_creates_data_dirs(tmp_path: Path):
+    runner = CliRunner()
+    target = tmp_path / "myarchive"
+    runner.invoke(cli, ["init", "--path", str(target)])
+
+    for zone in ("raw", "processed", "archive", "quarantine"):
+        assert (target / "data" / zone).exists()
+
+
+def test_init_command_shows_next_steps(tmp_path: Path):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["init", "--path", str(tmp_path / "archive")])
+
+    assert result.exit_code == 0
+    assert "Başlarken" in result.output or "cd" in result.output
+

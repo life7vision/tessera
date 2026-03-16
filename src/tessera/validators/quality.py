@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +22,7 @@ class QualityValidator(BaseValidator):
     version = "0.1.0"
 
     def validate(self, file_path: Path, metadata: dict | None = None) -> ValidationResult:
+        start = time.perf_counter()
         issues: list[ValidationIssue] = []
         dataframe = self._load_dataframe(file_path)
         if dataframe.empty:
@@ -66,7 +68,7 @@ class QualityValidator(BaseValidator):
             validator_name=self.name,
             level=level,
             issues=issues,
-            duration_ms=0,
+            duration_ms=int((time.perf_counter() - start) * 1000),
             metadata={"row_count": len(dataframe.index), "column_count": len(dataframe.columns)},
         )
 

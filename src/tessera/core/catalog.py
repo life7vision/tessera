@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from tessera.core.exceptions import CatalogError
+from tessera.core.exceptions import CatalogError, DuplicateDatasetError
 
 
 def _utc_now() -> str:
@@ -117,7 +117,7 @@ class CatalogManager:
                     payload,
                 )
         except sqlite3.IntegrityError as exc:
-            raise CatalogError("Dataset kaydı zaten mevcut.") from exc
+            raise DuplicateDatasetError("Dataset kaydı zaten mevcut.") from exc
         return dataset_id
 
     def get_dataset(self, dataset_id: str) -> dict[str, Any] | None:

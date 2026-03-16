@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from tessera.core.exceptions import TransformError
 from tessera.exporters.base import BaseExporter, ExportResult
 
 
@@ -19,8 +20,15 @@ class ReportExporter(BaseExporter):
 
     def export(self, version_id: str, target_path: Path, **kwargs) -> ExportResult:
         start = time.perf_counter()
+        if "source_path" not in kwargs:
+            raise TransformError("Rapor oluşturmak için 'source_path' parametresi gerekli.")
         source_path = Path(kwargs["source_path"])
-        dataframe = self._load_dataframe(source_path)
+        if not source_path.exists():
+            raise TransformError(f"Kaynak dosya bulunamadı: {source_path}")
+        try:
+            dataframe = self._load_dataframe(source_path)
+        except Exception as exc:
+            raise TransformError(f"Rapor için dosya okunamadı: {source_path.name} — {exc}") from exc
         report = {
             "version_id": version_id,
             "row_count": len(dataframe.index),

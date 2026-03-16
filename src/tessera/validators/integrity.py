@@ -44,12 +44,14 @@ class IntegrityValidator(BaseValidator):
         if file_path.suffix == ".parquet":
             try:
                 pq.read_metadata(file_path)
-            except Exception:
+            except (OSError, ValueError, Exception) as exc:
+                # pyarrow raises ArrowInvalid (subclass of ArrowException)
+                # for corrupt files; catch broadly and surface the code.
                 issues.append(
                     ValidationIssue(
                         level=ValidationLevel.FAILED,
                         code="INVALID_PARQUET",
-                        message="Parquet metadata okunamadi.",
+                        message=f"Parquet metadata okunamadi: {exc}",
                     )
                 )
 
