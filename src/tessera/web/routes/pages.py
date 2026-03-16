@@ -24,6 +24,30 @@ async def home(request: Request):
     )
 
 
+@router.get("/datasets", response_class=HTMLResponse)
+async def datasets_page(request: Request):
+    """Render the datasets explorer (split-panel) page."""
+
+    catalog = request.app.state.catalog
+    all_datasets = catalog.search_datasets()
+    sources = sorted({ds["source"] for ds in all_datasets})
+
+    enriched = []
+    for ds in all_datasets:
+        versions = catalog.get_versions(ds["id"])
+        enriched.append({**ds, "version_count": len(versions)})
+
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "datasets.html",
+        {
+            "active": "datasets",
+            "datasets": enriched,
+            "sources": sources,
+        },
+    )
+
+
 @router.get("/search", response_class=HTMLResponse)
 async def search(request: Request, q: str = "", source: str = "", tag: str = "", zone: str = ""):
     """Render search results."""

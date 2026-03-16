@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Tessera{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <nav class="nav">
@@ -24,6 +25,7 @@
 
     <nav class="nav-links" aria-label="Sayfa navigasyonu">
       <a href="/" class="{% if active == 'home' %}active{% endif %}">Ara</a>
+      <a href="/datasets" class="{% if active == 'datasets' %}active{% endif %}">Datasets</a>
       <a href="/search" class="{% if active == 'catalog' %}active{% endif %}">Katalog</a>
       <a href="/pipeline" class="{% if active == 'pipeline' %}active{% endif %}">Pipeline</a>
       <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">Ayarlar</a>
