@@ -259,9 +259,8 @@
         'Kaynak</a>' : '';
 
     var desc = ds.description
-      ? '<p class="ds-head-desc">' + esc(ds.description.slice(0, 800)) +
-        (ds.description.length > 800 ? ' …' : '') + '</p>'
-      : '';
+      ? '<div class="ds-head-desc">' + esc(ds.description) + '</div>'
+      : '<div class="ds-head-desc-empty">Açıklama yok — Kaggle\'dan çekmek için "Metaveryi Yenile" butonunu kullanın.</div>';
 
     function cell(label, val, mono) {
       return '<div class="ds-info-cell">' +
@@ -299,6 +298,12 @@
       '<div class="ds-head-meta">' +
         '<span class="badge source-' + esc(ds.source) + '">' + esc(ds.source) + '</span>' +
         extLink +
+        '<button class="ds-refresh-btn" onclick="refreshMeta(\'' + esc(ds.id) + '\',\'' + esc(ds.source) + '\')">' +
+          '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.7">' +
+          '<path d="M13 7A6 6 0 1 1 7 1a6 6 0 0 1 4.95 2.6"/>' +
+          '<path d="M13 1v3.6H9.4"/></svg>' +
+          'Metaveryi Yenile' +
+        '</button>' +
       '</div>' +
       '<h1 class="ds-head-title">' + esc(ds.name) + '</h1>' +
       desc +
@@ -333,6 +338,23 @@
     document.addEventListener('mouseup', onUp);
     e.preventDefault();
   });
+
+  // ── Refresh metadata ──────────────────────────────────────────
+  window.refreshMeta = async function (id, source) {
+    var btn = document.querySelector('.ds-refresh-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Yenileniyor…'; }
+
+    try {
+      var res = await fetch('/api/v1/datasets/' + encodeURIComponent(id) + '/refresh-metadata', {method: 'POST'});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      // reload detail with fresh data
+      activeId = null;
+      loadDetail(id);
+    } catch (err) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Metaveryi Yenile'; }
+      alert('Yenileme başarısız: ' + err.message);
+    }
+  };
 
   // ── Helpers ───────────────────────────────────────────────────
   function esc(s) {

@@ -992,6 +992,7 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .ds-head-title {
@@ -1003,12 +1004,38 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
 }
 
 .ds-head-desc {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-2);
-  line-height: 1.65;
-  max-width: 65ch;
+  line-height: 1.7;
+  max-width: 68ch;
+  margin-bottom: 1rem;
+  white-space: pre-line;   /* renders \n as line breaks */
+}
+
+.ds-head-desc-empty {
+  font-size: 0.83rem;
+  color: var(--text-3);
+  font-style: italic;
   margin-bottom: 1rem;
 }
+
+.ds-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-left: auto;
+}
+.ds-refresh-btn:hover { border-color: var(--border-2); color: var(--text-2); }
+.ds-refresh-btn:disabled { opacity: 0.5; cursor: default; }
 
 .ds-head-tags {
   display: flex;

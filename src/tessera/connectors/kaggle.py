@@ -32,20 +32,53 @@ class KaggleConnector(BaseConnector):
         return [self._list_item_to_info(item) for item in items]
 
     def fetch_metadata(self, source_ref: str) -> DatasetInfo:
-        """Fetch dataset metadata using kaggle 2.0 dataset_metadata API."""
+        """Fetch full dataset metadata via dataset_list (includes description, tags, stats)."""
+        owner = source_ref.split("/")[0] if "/" in source_ref else ""
+        slug  = source_ref.split("/")[-1]
+
+        # Primary: dataset_list returns ApiDataset with full description field
+        ds = None
+        try:
+            results = self._api().dataset_list(user=owner, search=slug) or []
+            ds = next((d for d in results if getattr(d, "ref", "") == source_ref), None)
+        except Exception:
+            pass
+
+        if ds is not None:
+            name        = getattr(ds, "title", None) or slug
+            description = getattr(ds, "description", "") or getattr(ds, "subtitle", "") or ""
+            tags        = [t.name if hasattr(t, "name") else str(t) for t in (getattr(ds, "tags", []) or [])]
+            license_name = getattr(ds, "license_name", None)
+            size_bytes  = getattr(ds, "total_bytes", None)
+            url         = getattr(ds, "url", None) or f"https://www.kaggle.com/datasets/{source_ref}"
+            extra = {
+                "owner":           getattr(ds, "owner_name", None),
+                "subtitle":        getattr(ds, "subtitle", None),
+                "totalViews":      getattr(ds, "view_count", None),
+                "totalVotes":      getattr(ds, "vote_count", None),
+                "totalDownloads":  getattr(ds, "download_count", None),
+                "usabilityRating": getattr(ds, "usability_rating", None),
+            }
+            return DatasetInfo(
+                source="kaggle", source_ref=source_ref,
+                name=name, description=description,
+                size_bytes=size_bytes, file_count=1, format_hint=None,
+                tags=tags, license=license_name, last_updated=None,
+                url=url, extra_metadata=extra,
+            )
+
+        # Fallback: dataset_metadata config JSON (older kaggle versions / no match)
         with tempfile.TemporaryDirectory() as tmp:
             self._api().dataset_metadata(source_ref, path=tmp)
             meta_path = Path(tmp) / "dataset-metadata.json"
             raw = json.loads(meta_path.read_text(encoding="utf-8"))
         info = raw.get("info", raw)
         return DatasetInfo(
-            source="kaggle",
-            source_ref=source_ref,
-            name=info.get("title") or info.get("datasetSlug", source_ref.split("/")[-1]),
+            source="kaggle", source_ref=source_ref,
+            name=info.get("title") or info.get("datasetSlug", slug),
             description=info.get("description") or info.get("subtitle") or "",
             size_bytes=info.get("totalBytes"),
-            file_count=1,
-            format_hint=None,
+            file_count=1, format_hint=None,
             tags=info.get("keywords", []),
             license=next(
                 (lic.get("name") for lic in info.get("licenses", []) if isinstance(lic, dict)),
@@ -54,7 +87,6 @@ class KaggleConnector(BaseConnector):
             last_updated=None,
             url=f"https://www.kaggle.com/datasets/{source_ref}",
             extra_metadata={
-                "datasetId": info.get("datasetId"),
                 "owner": info.get("ownerUser"),
                 "subtitle": info.get("subtitle"),
                 "totalViews": info.get("totalViews"),
@@ -95,7 +127,7 @@ class KaggleConnector(BaseConnector):
             source="kaggle",
             source_ref=ref,
             name=getattr(item, "title", None) or getattr(item, "slug", "unknown"),
-            description=getattr(item, "subtitle", "") or "",
+            description=getattr(item, "description", "") or getattr(item, "subtitle", "") or "",
             size_bytes=getattr(item, "totalBytes", None),
             file_count=getattr(item, "fileCount", 1) or 1,
             format_hint=None,

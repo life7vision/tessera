@@ -215,6 +215,38 @@ async def test_credential(request: Request, service: str):
         return {"ok": False, "message": str(exc)}
 
 
+# ── Metadata refresh ───────────────────────────────────────────
+
+@router.post("/datasets/{dataset_id}/refresh-metadata")
+async def refresh_metadata(request: Request, dataset_id: str):
+    """Re-fetch metadata from source and update catalog entry."""
+
+    catalog = request.app.state.catalog
+    registry = request.app.state.registry
+
+    dataset = catalog.get_dataset(dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset bulunamadı.")
+
+    try:
+        connector = registry.get_connector(dataset["source"])
+        info = connector.fetch_metadata(dataset["source_ref"])
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    import json as _json
+    catalog.update_dataset(
+        dataset_id,
+        name=info.name,
+        description=info.description,
+        tags=_json.dumps(info.tags) if isinstance(info.tags, list) else (info.tags or "[]"),
+        license=info.license or "",
+    )
+
+    updated = catalog.get_dataset(dataset_id)
+    return {"ok": True, "dataset": updated}
+
+
 # ── Ingest jobs ────────────────────────────────────────────────────
 
 class IngestPayload(BaseModel):
