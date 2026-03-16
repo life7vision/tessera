@@ -1,9 +1,9 @@
 project:
-  name: "my-data-archive"
+  name: "tessera-archive"
   version: "0.1.0"
 
 storage:
-  base_path: "./data"
+  base_path: "/run/media/life7vision/DataSSD/projects/Tessera/data"
   zones:
     raw: "raw"
     processed: "processed"
@@ -67,5 +67,5 @@ hooks:
 logging:
   level: "INFO"
   format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-  file: null
+  file: "/run/media/life7vision/DataSSD/projects/Tessera/data/tessera.log"
 
