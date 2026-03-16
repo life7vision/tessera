@@ -3,78 +3,86 @@
 
 {% block extra_head %}
 <style>
-  /* Datasets page: override shell to full-width split layout */
-  .shell { width: 100% !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; overflow: hidden; }
-  body { overflow: hidden; }
+  .shell { width: 100% !important; padding: 0 !important; margin: 0 !important; overflow: hidden; }
+  body   { overflow: hidden; }
 </style>
 {% endblock %}
 
 {% block content %}
-
 <div class="ds-wrap">
 
-  <!-- ── Left sidebar ───────────────────────────────────────── -->
+  {# ── Sidebar ──────────────────────────────────────────────── #}
   <aside class="ds-sidebar">
-    <div class="ds-sidebar-head">
-      <input type="text" class="ds-filter-input" id="ds-search"
-             placeholder="Dataset ara…" autocomplete="off">
+    <div class="ds-sidebar-top">
+      <div class="ds-sidebar-title">Datasets</div>
+
+      {# Search #}
+      <div class="ds-search-wrap">
+        <svg class="ds-search-icon" viewBox="0 0 16 16" width="13" height="13"
+             fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="6.5" cy="6.5" r="4.5"/>
+          <path d="M10.5 10.5l3 3"/>
+        </svg>
+        <input type="text" class="ds-filter-input" id="ds-search"
+               placeholder="Ara…" autocomplete="off">
+      </div>
+
+      {# Source filter pills #}
       {% if sources %}
-      <div class="ds-source-tabs" id="ds-source-tabs">
-        <button class="ds-source-tab active" data-source="">Tümü</button>
+      <div class="ds-pills" id="ds-pills">
+        <button class="ds-pill active" data-source="">Tümü</button>
         {% for src in sources %}
-        <button class="ds-source-tab" data-source="{{ src }}">{{ src|capitalize }}</button>
+        <button class="ds-pill" data-source="{{ src }}">{{ src|capitalize }}</button>
         {% endfor %}
       </div>
       {% endif %}
     </div>
 
-    <div class="ds-list-count" id="ds-count">
-      {{ datasets|length }} dataset
-    </div>
-
+    {# Dataset list #}
     <div class="ds-list" id="ds-list">
       {% if datasets %}
+        {% set ns = namespace(prev_source='') %}
         {% for ds in datasets %}
-        <div class="ds-item"
-             data-id="{{ ds.id }}"
-             data-source="{{ ds.source }}"
-             data-name="{{ ds.name|lower }}">
-          <div class="ds-item-icon source-{{ ds.source }}">
-            {{ ds.source[:2]|upper }}
-          </div>
-          <div class="ds-item-body">
-            <div class="ds-item-name">{{ ds.name }}</div>
-            <div class="ds-item-meta">
-              {{ ds.source }} · {{ ds.version_count }} sürüm
+          {% if ds.source != ns.prev_source %}
+          <div class="ds-list-label">{{ ds.source|capitalize }}</div>
+          {% set ns.prev_source = ds.source %}
+          {% endif %}
+          <div class="ds-item"
+               data-id="{{ ds.id }}"
+               data-source="{{ ds.source }}"
+               data-name="{{ ds.name|lower }}">
+            <span class="ds-dot ds-dot-{{ ds.source }}"></span>
+            <div class="ds-item-body">
+              <div class="ds-item-name">{{ ds.name }}</div>
+              <div class="ds-item-sub">{{ ds.version_count }} sürüm</div>
             </div>
           </div>
-        </div>
         {% endfor %}
       {% else %}
-        <div style="padding:2.5rem 1rem; text-align:center; color:var(--text-3); font-size:0.85rem; line-height:1.8">
+        <div class="ds-list-empty">
           Henüz dataset yok.<br>
-          <a href="/ingest" style="color:var(--text-2); text-decoration:underline">
-            İlk dataseti arşivle →
-          </a>
+          <a href="/ingest" style="color:var(--text-2)">İlk dataseti arşivle →</a>
         </div>
       {% endif %}
     </div>
   </aside>
 
-  <!-- ── Right main panel ───────────────────────────────────── -->
+  {# ── Main panel ───────────────────────────────────────────── #}
   <main class="ds-main" id="ds-main">
 
-    <!-- empty state -->
-    <div class="ds-main-empty" id="ds-empty">
-      <svg viewBox="0 0 24 24" width="44" height="44" fill="none"
-           stroke="currentColor" stroke-width="1.3">
-        <rect x="2" y="3" width="20" height="18" rx="2.5"/>
-        <path d="M2 9h20M9 21V9"/>
-      </svg>
-      <p style="font-size:0.9rem">Bir dataset seçin</p>
+    {# Empty / loading placeholder #}
+    <div class="ds-placeholder" id="ds-placeholder">
+      <div class="ds-placeholder-icon">
+        <svg viewBox="0 0 20 20" width="22" height="22" fill="none"
+             stroke="currentColor" stroke-width="1.4">
+          <rect x="2" y="2" width="16" height="16" rx="3"/>
+          <path d="M2 7.5h16M7.5 18V7.5"/>
+        </svg>
+      </div>
+      <p>Bir dataset seçin</p>
     </div>
 
-    <!-- detail (JS ile doldurulur) -->
+    {# Detail panel — filled by JS #}
     <div id="ds-detail" style="display:none"></div>
 
   </main>
@@ -82,24 +90,46 @@
 
 <script>
 (function () {
-  var list   = document.getElementById('ds-list');
-  var detail = document.getElementById('ds-detail');
-  var empty  = document.getElementById('ds-empty');
-  var search = document.getElementById('ds-search');
-  var countEl = document.getElementById('ds-count');
-  var tabsEl = document.getElementById('ds-source-tabs');
+  var listEl      = document.getElementById('ds-list');
+  var detailEl    = document.getElementById('ds-detail');
+  var placeholder = document.getElementById('ds-placeholder');
+  var searchEl    = document.getElementById('ds-search');
+  var pillsEl     = document.getElementById('ds-pills');
 
   var activeSource = '';
   var activeId     = null;
-  var loading      = false;
+  var inFlight     = false;
 
-  // ── Source tab filter ──────────────────────────────────────
-  if (tabsEl) {
-    tabsEl.querySelectorAll('.ds-source-tab').forEach(function (btn) {
+  // ── Filter (search + source pill) ──────────────────────────
+  function applyFilter() {
+    var q = searchEl.value.toLowerCase().trim();
+    var labels = listEl.querySelectorAll('.ds-list-label');
+    var items  = listEl.querySelectorAll('.ds-item');
+
+    items.forEach(function (item) {
+      var srcOk  = !activeSource || item.dataset.source === activeSource;
+      var nameOk = !q || item.dataset.name.includes(q);
+      item.style.display = (srcOk && nameOk) ? '' : 'none';
+    });
+
+    // hide group labels when all their items are hidden
+    labels.forEach(function (lbl) {
+      var next = lbl.nextElementSibling;
+      var any  = false;
+      while (next && !next.classList.contains('ds-list-label')) {
+        if (next.style.display !== 'none') { any = true; break; }
+        next = next.nextElementSibling;
+      }
+      lbl.style.display = any ? '' : 'none';
+    });
+  }
+
+  searchEl.addEventListener('input', applyFilter);
+
+  if (pillsEl) {
+    pillsEl.querySelectorAll('.ds-pill').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        tabsEl.querySelectorAll('.ds-source-tab').forEach(function (b) {
-          b.classList.remove('active');
-        });
+        pillsEl.querySelectorAll('.ds-pill').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         activeSource = btn.dataset.source;
         applyFilter();
@@ -107,167 +137,153 @@
     });
   }
 
-  search.addEventListener('input', applyFilter);
-
-  function applyFilter() {
-    var q = search.value.toLowerCase().trim();
-    var visible = 0;
-    list.querySelectorAll('.ds-item').forEach(function (item) {
-      var srcOk  = !activeSource || item.dataset.source === activeSource;
-      var nameOk = !q || item.dataset.name.includes(q);
-      var show   = srcOk && nameOk;
-      item.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-    countEl.textContent = visible + ' dataset';
-  }
-
-  // ── Click handler ──────────────────────────────────────────
-  list.querySelectorAll('.ds-item').forEach(function (item) {
-    item.addEventListener('click', function () {
-      loadDataset(item.dataset.id);
-    });
-  });
-
-  // ── Load dataset detail via API ────────────────────────────
+  // ── Load detail ─────────────────────────────────────────────
   async function loadDataset(id) {
-    if (loading || activeId === id) return;
+    if (inFlight || activeId === id) return;
     activeId = id;
-    loading  = true;
+    inFlight = true;
 
-    list.querySelectorAll('.ds-item').forEach(function (el) {
+    // highlight selected item
+    listEl.querySelectorAll('.ds-item').forEach(function (el) {
       el.classList.toggle('selected', el.dataset.id === id);
     });
 
-    detail.style.display = 'none';
-    empty.style.display  = 'flex';
-    empty.innerHTML      = '<span style="color:var(--text-3);font-size:0.85rem">Yükleniyor…</span>';
+    detailEl.style.display  = 'none';
+    placeholder.style.display = 'flex';
+    placeholder.innerHTML = '<span style="font-size:.83rem;color:var(--text-3)">Yükleniyor…</span>';
 
     try {
       var res = await fetch('/api/v1/datasets/' + encodeURIComponent(id));
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      var data = await res.json();
-
-      detail.innerHTML    = renderDetail(data.dataset, data.versions);
-      detail.style.display = '';
-      empty.style.display  = 'none';
-
+      var d = await res.json();
+      detailEl.innerHTML    = buildDetail(d.dataset, d.versions || []);
+      detailEl.style.display  = '';
+      placeholder.style.display = 'none';
       history.replaceState(null, '', '/datasets#' + id);
     } catch (err) {
-      empty.innerHTML = '<span style="color:var(--red);font-size:0.85rem">Yüklenemedi: ' + esc(err.message) + '</span>';
+      placeholder.innerHTML = '<span style="color:var(--red);font-size:.83rem">Yüklenemedi — ' + esc(err.message) + '</span>';
     } finally {
-      loading = false;
+      inFlight = false;
     }
   }
 
-  // ── Render detail HTML ─────────────────────────────────────
-  function renderDetail(ds, versions) {
-    var latest = versions && versions.length ? versions[0] : null;
+  // ── Build detail HTML ────────────────────────────────────────
+  function buildDetail(ds, versions) {
+    var latest   = versions.length ? versions[0] : null;
+    var size     = latest ? human(latest.file_size_bytes) : '—';
+    var zone     = latest ? (latest.zone || '—') : '—';
+    var checksum = latest && latest.checksum_sha256
+                   ? latest.checksum_sha256.slice(0, 20) + '…' : '—';
+    var vcount   = versions.length;
 
+    // tags
     var tags = (ds.tags || []).map(function (t) {
-      return '<span class="badge tag-badge">' + esc(t) + '</span>';
+      return '<span class="ds-tag">' + esc(t) + '</span>';
     }).join('');
 
-    var size      = latest ? humanSize(latest.file_size_bytes || 0) : '—';
-    var zone      = latest ? (latest.zone || '—') : '—';
-    var checksum  = latest && latest.checksum_sha256
-                    ? latest.checksum_sha256.slice(0, 16) + '…'
-                    : '—';
+    // source external link
+    var extLink = ds.url
+      ? '<a class="ds-source-link" href="' + esc(ds.url) + '" target="_blank" rel="noopener">' +
+        '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6">' +
+        '<path d="M7 1h4v4M11 1l-6 6M5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8"/></svg>' +
+        esc(ds.source) + ' kaynağı</a>'
+      : '';
 
-    var versRows = (versions || []).map(function (v) {
+    // description (max 800 chars)
+    var desc = ds.description
+      ? '<p class="ds-head-desc">' + esc(ds.description.slice(0, 800)) +
+        (ds.description.length > 800 ? ' …' : '') + '</p>'
+      : '';
+
+    // info cells
+    function cell(label, val, mono) {
+      return '<div class="ds-info-cell">' +
+        '<div class="ds-info-label">' + esc(label) + '</div>' +
+        '<div class="ds-info-value' + (mono ? ' mono' : '') + '">' + esc(val) + '</div>' +
+        '</div>';
+    }
+
+    var infoGrid =
+      cell('Kaynak',   ds.source || '—') +
+      cell('Boyut',    size) +
+      cell('Lisans',   ds.license || '—') +
+      cell('Sürümler', String(vcount)) +
+      cell('Bölge',    zone) +
+      cell('Ref',      ds.source_ref || '—', true);
+
+    // versions rows
+    var vRows = versions.map(function (v) {
+      var zoneCls = 'zone-' + esc(v.zone || 'archive');
       return '<tr>' +
         '<td><span class="badge version-badge">v' + esc(String(v.version)) + '</span></td>' +
-        '<td>' + esc(humanSize(v.file_size_bytes || 0)) + '</td>' +
+        '<td>' + esc(human(v.file_size_bytes)) + '</td>' +
         '<td>' + esc(v.file_count || 0) + ' dosya</td>' +
-        '<td><span class="badge zone-' + esc(v.zone || 'archive') + '">' + esc(v.zone || '—') + '</span></td>' +
-        '<td style="font-size:0.77rem;color:var(--text-3)">' + esc((v.created_at || '—').slice(0, 10)) + '</td>' +
+        '<td><span class="badge ' + zoneCls + '">' + esc(v.zone || '—') + '</span></td>' +
+        '<td class="ds-info-value mono" style="font-size:.72rem">' +
+          esc((v.checksum_sha256 || '').slice(0, 12) || '—') + '</td>' +
+        '<td style="color:var(--text-3);font-size:.78rem">' +
+          esc((v.created_at || '—').slice(0, 10)) + '</td>' +
         '</tr>';
     }).join('');
 
-    var versTable = versRows
-      ? '<div class="table-wrap" style="margin-top:0.75rem"><table>' +
-        '<thead><tr><th>Sürüm</th><th>Boyut</th><th>Dosyalar</th><th>Bölge</th><th>Tarih</th></tr></thead>' +
-        '<tbody>' + versRows + '</tbody></table></div>'
-      : '<p style="color:var(--text-3);font-size:0.85rem;margin-top:0.75rem">Sürüm bulunamadı</p>';
-
-    var sourceLink = ds.url
-      ? '<a href="' + esc(ds.url) + '" target="_blank" rel="noopener" ' +
-        'style="font-size:0.8rem;color:var(--text-3);text-decoration:underline">↗ Kaynak</a>'
-      : '';
-
-    var descHtml = ds.description
-      ? '<p class="ds-detail-desc">' + esc(ds.description.slice(0, 600)) +
-        (ds.description.length > 600 ? '…' : '') + '</p>'
-      : '';
+    var vTable = vRows
+      ? '<table class="ds-ver-table">' +
+        '<thead><tr>' +
+        '<th>Sürüm</th><th>Boyut</th><th>Dosyalar</th><th>Bölge</th>' +
+        '<th>Checksum</th><th>Tarih</th>' +
+        '</tr></thead><tbody>' + vRows + '</tbody></table>'
+      : '<p style="color:var(--text-3);font-size:.85rem">Henüz sürüm yok.</p>';
 
     return (
-      '<div class="ds-detail-head">' +
-        '<div class="ds-detail-eyebrow">' +
+      '<div class="ds-detail">' +
+        // header
+        '<div class="ds-head-meta">' +
           '<span class="badge source-' + esc(ds.source) + '">' + esc(ds.source) + '</span>' +
-          sourceLink +
+          extLink +
         '</div>' +
-        '<h1 class="ds-detail-title">' + esc(ds.name) + '</h1>' +
-        descHtml +
-        (tags ? '<div class="ds-detail-tags">' + tags + '</div>' : '') +
-        '<div class="ds-action-row">' +
-          '<a href="/dataset/' + esc(ds.id) + '" class="ds-action-btn">Detay Sayfası</a>' +
-          '<a href="/ingest" class="ds-action-btn">+ Yeni Sürüm</a>' +
-        '</div>' +
-      '</div>' +
+        '<h1 class="ds-head-title">' + esc(ds.name) + '</h1>' +
+        desc +
+        (tags ? '<div class="ds-head-tags">' + tags + '</div>' : '') +
 
-      '<div class="ds-detail-grid">' +
-        '<div>' +
-          '<div class="panel">' +
-            '<div class="panel-head">' +
-              '<h2>Sürümler</h2>' +
-              '<span class="badge tag-badge">' + (versions ? versions.length : 0) + ' toplam</span>' +
-            '</div>' +
-            versTable +
-          '</div>' +
-        '</div>' +
+        // info grid
+        '<div class="ds-info-grid">' + infoGrid + '</div>' +
 
-        '<div class="ds-meta-card">' +
-          '<div class="ds-meta-card-head">Bilgiler</div>' +
-          '<dl class="ds-meta-dl">' +
-            '<dt>Kaynak</dt><dd>' + esc(ds.source) + '</dd>' +
-            '<dt>Ref</dt><dd style="font-size:0.78rem;word-break:break-all">' + esc(ds.source_ref || '—') + '</dd>' +
-            '<dt>Lisans</dt><dd>' + esc(ds.license || '—') + '</dd>' +
-            '<dt>Boyut</dt><dd>' + esc(size) + '</dd>' +
-            '<dt>Bölge</dt><dd>' + esc(zone) + '</dd>' +
-            '<dt>Checksum</dt><dd style="font-family:monospace;font-size:0.75rem">' + esc(checksum) + '</dd>' +
-            '<dt>ID</dt><dd style="font-family:monospace;font-size:0.75rem;word-break:break-all">' + esc(ds.id || '—') + '</dd>' +
-          '</dl>' +
+        // versions
+        '<div class="ds-section-head">' +
+          '<span class="ds-section-title">Sürüm Geçmişi</span>' +
+          '<span class="badge tag-badge">' + vcount + ' sürüm</span>' +
         '</div>' +
+        vTable +
       '</div>'
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────
   function esc(s) {
     return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  function humanSize(bytes) {
-    bytes = Number(bytes) || 0;
-    if (bytes < 1024)           return bytes + ' B';
-    if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + ' KB';
-    if (bytes < 1024 ** 3)      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    return (bytes / (1024 ** 3)).toFixed(1) + ' GB';
+  function human(b) {
+    b = Number(b) || 0;
+    if (b < 1024)        return b + ' B';
+    if (b < 1048576)     return (b/1024).toFixed(1)    + ' KB';
+    if (b < 1073741824)  return (b/1048576).toFixed(1) + ' MB';
+    return (b/1073741824).toFixed(2) + ' GB';
   }
 
-  // ── Initial selection (hash or first item) ─────────────────
-  var hashId   = location.hash.slice(1);
-  var initial  = hashId
-    ? list.querySelector('.ds-item[data-id="' + hashId + '"]') || list.querySelector('.ds-item')
-    : list.querySelector('.ds-item');
+  // ── Click handler ────────────────────────────────────────────
+  listEl.querySelectorAll('.ds-item').forEach(function (item) {
+    item.addEventListener('click', function () { loadDataset(item.dataset.id); });
+  });
 
-  if (initial) {
-    loadDataset(initial.dataset.id);
-  }
+  // ── Auto-select (hash or first) ──────────────────────────────
+  var hash = location.hash.slice(1);
+  var first = hash
+    ? listEl.querySelector('.ds-item[data-id="' + hash + '"]') || listEl.querySelector('.ds-item')
+    : listEl.querySelector('.ds-item');
+  if (first) loadDataset(first.dataset.id);
 })();
 </script>
 {% endblock %}
