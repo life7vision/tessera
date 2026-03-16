@@ -122,6 +122,22 @@ class Pipeline:
 
                 metadata = connector.fetch_metadata(source_ref)
                 dataset = self._resolve_dataset(metadata)
+
+                # Always refresh catalog metadata (name, description, tags, license)
+                # for existing datasets so stale/empty entries get updated.
+                if dataset:
+                    import json as _json
+                    self.catalog.update_dataset(
+                        dataset["id"],
+                        name=metadata.name,
+                        description=metadata.description or dataset.get("description") or "",
+                        tags=(
+                            _json.dumps(metadata.tags)
+                            if isinstance(metadata.tags, list)
+                            else (metadata.tags or "[]")
+                        ),
+                    )
+
                 next_version = self.version_manager.next_version(
                     dataset["current_version"] if dataset else None,
                     "minor" if dataset else "minor",
@@ -259,6 +275,34 @@ class Pipeline:
                     metadata_json = dict(version_record["metadata_json"])
                     metadata_json["profile_path"] = str(profile_path)
                     self.catalog.update_version_profile(version_id, str(profile_path), metadata_json)
+
+                # AI enrichment: generate description if missing or very short
+                ai_cfg = self._section("ai_enrichment")
+                if ai_cfg.get("enabled", False):
+                    current_desc = (
+                        metadata.description
+                        or (dataset.get("description") if dataset else None)
+                        or ""
+                    )
+                    min_len = int(ai_cfg.get("min_description_length", 80))
+                    if len(current_desc.strip()) < min_len:
+                        try:
+                            from tessera.core.ai_enrichment import enrich_description
+                            ai_desc = enrich_description(raw_path, metadata, config=ai_cfg)
+                            if ai_desc:
+                                import json as _json
+                                self.catalog.update_dataset(
+                                    dataset_id, description=ai_desc
+                                )
+                                stages.append(StageResult(
+                                    stage="ai_enrich",
+                                    plugin_name="claude",
+                                    status="success",
+                                    duration_ms=0,
+                                    details={"chars": len(ai_desc)},
+                                ))
+                        except Exception:
+                            pass
 
                 self._run_hooks(
                     "post_ingest",

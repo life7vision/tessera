@@ -78,6 +78,17 @@ class ProjectConfig(TesseraBaseModel):
     version: str = "0.1.0"
 
 
+class AiEnrichmentConfig(TesseraBaseModel):
+    """Claude AI-powered dataset description enrichment."""
+
+    enabled: bool = False
+    model: str = "claude-haiku-4-5-20251001"
+    max_tokens: int = Field(default=1024, ge=128, le=4096)
+    max_files: int = Field(default=3, ge=1, le=10)
+    min_description_length: int = Field(default=80, ge=0)
+    api_key: str | None = None
+
+
 class AppConfig(TesseraBaseModel):
     """Root application configuration."""
 
@@ -95,6 +106,7 @@ class AppConfig(TesseraBaseModel):
     )
     hooks: dict[str, list[str]] = Field(default_factory=dict)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    ai_enrichment: AiEnrichmentConfig = Field(default_factory=AiEnrichmentConfig)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a plain dictionary representation."""

@@ -64,6 +64,13 @@ hooks:
   on_error:
     - notify
 
+ai_enrichment:
+  enabled: true
+  model: "claude-haiku-4-5-20251001"
+  max_tokens: 1024
+  max_files: 3
+  min_description_length: 80   # generate only if existing desc is shorter than this
+
 logging:
   level: "INFO"
   format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
