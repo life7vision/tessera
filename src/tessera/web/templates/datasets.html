@@ -3,377 +3,468 @@
 
 {% block extra_head %}
 <style>
-  .shell { width:100%!important; padding:0!important; margin:0!important; overflow:hidden; }
-  body   { overflow:hidden; }
+  .shell { width:100%!important; padding:0!important; margin:0!important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="ds-root" style="width:100%; height:calc(100vh - 56px); overflow:hidden; position:relative;">
+<div class="dsp-root" id="dsp-root">
 
-  {# ══════════════════════════════════════════════════════════════
-     ETAP 1 — Kart grid görünümü
-  ══════════════════════════════════════════════════════════════ #}
-  <div id="ds-grid-view" class="ds-gv">
+  {# ── Liste görünümü ────────────────────────────────────────── #}
+  <div class="dsp-list-view" id="dsp-list-view">
 
-    <div class="ds-gv-header">
-      <div class="ds-gv-title-row">
-        <h1 class="ds-gv-title">Datasets</h1>
-        <a href="/ingest" class="ds-gv-add">+ Arşivle</a>
-      </div>
-
-      <div class="ds-gv-bar">
-        {# search #}
-        <div class="ds-search-wrap" style="flex:1; max-width:360px">
-          <svg class="ds-search-icon" viewBox="0 0 16 16" width="13" height="13"
+    <div class="dsp-list-header">
+      <h1 class="dsp-list-title">Datasets</h1>
+      <div class="dsp-list-actions">
+        <div class="dsp-list-search-wrap">
+          <svg class="dsp-list-search-icon" viewBox="0 0 14 14" width="12" height="12"
                fill="none" stroke="currentColor" stroke-width="1.6">
-            <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/>
+            <circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l3 3"/>
           </svg>
-          <input id="gv-search" class="ds-filter-input" placeholder="Dataset ara…" autocomplete="off">
+          <input id="dsp-search" class="dsp-list-search" placeholder="Dataset ara…" autocomplete="off">
         </div>
-        {# source pills #}
-        {% if sources %}
-        <div class="ds-pills" id="gv-pills">
-          <button class="ds-pill active" data-source="">Tümü</button>
-          {% for src in sources %}
-          <button class="ds-pill" data-source="{{ src }}">{{ src|capitalize }}</button>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-    </div>
-
-    {% if datasets %}
-    <div class="ds-cards" id="ds-cards">
-      {% for ds in datasets %}
-      <div class="ds-card"
-           data-id="{{ ds.id }}"
-           data-source="{{ ds.source }}"
-           data-name="{{ ds.name|lower }}">
-        <div class="ds-card-top">
-          <span class="badge source-{{ ds.source }}">{{ ds.source }}</span>
-          <span class="ds-card-ver">{{ ds.version_count }} sürüm</span>
-        </div>
-        <div class="ds-card-name">{{ ds.name }}</div>
-        {% if ds.description %}
-        <div class="ds-card-desc">{{ ds.description[:120] }}{% if ds.description|length > 120 %}…{% endif %}</div>
-        {% endif %}
-        {% if ds.tags %}
-        <div class="ds-card-tags">
-          {% set tag_list = ds.tags if ds.tags is iterable and ds.tags is not string else [] %}
-          {% for tag in tag_list[:4] %}
-          <span class="ds-tag">{{ tag }}</span>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="ds-gv-empty">
-      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3">
-        <rect x="2" y="3" width="20" height="18" rx="2.5"/><path d="M2 9h20M9 21V9"/>
-      </svg>
-      <p>Henüz dataset yok</p>
-      <a href="/ingest" class="ds-gv-add">İlk dataseti arşivle →</a>
-    </div>
-    {% endif %}
-  </div>
-
-
-  {# ══════════════════════════════════════════════════════════════
-     ETAP 2 — Split panel (başta gizli)
-  ══════════════════════════════════════════════════════════════ #}
-  <div id="ds-split-view" class="ds-sv" style="display:none">
-
-    {# Sol sidebar #}
-    <aside class="ds-sidebar" id="ds-sidebar">
-      <div class="ds-sidebar-top">
-        <button id="ds-back" class="ds-back-btn">
+        <a href="/ingest" class="dsp-add-btn">
           <svg viewBox="0 0 12 12" width="11" height="11" fill="none"
-               stroke="currentColor" stroke-width="1.8">
-            <path d="M7.5 1.5L3 6l4.5 4.5"/>
+               stroke="currentColor" stroke-width="2.2">
+            <path d="M6 1v10M1 6h10"/>
           </svg>
-          Tüm Datasets
-        </button>
-
-        <div class="ds-search-wrap">
-          <svg class="ds-search-icon" viewBox="0 0 16 16" width="13" height="13"
-               fill="none" stroke="currentColor" stroke-width="1.6">
-            <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/>
-          </svg>
-          <input id="sv-search" class="ds-filter-input" placeholder="Ara…" autocomplete="off">
-        </div>
+          Arşivle
+        </a>
       </div>
+    </div>
 
-      <div class="ds-list" id="sv-list">
+    <div class="dsp-grid" id="dsp-grid">
+      {% if datasets %}
         {% for ds in datasets %}
-        <div class="ds-item"
+        <div class="dsp-grid-card"
              data-id="{{ ds.id }}"
-             data-source="{{ ds.source }}"
-             data-name="{{ ds.name|lower }}">
-          <span class="ds-dot ds-dot-{{ ds.source }}"></span>
-          <div class="ds-item-body">
-            <div class="ds-item-name">{{ ds.name }}</div>
-            <div class="ds-item-sub">{{ ds.source }} · {{ ds.version_count }} sürüm</div>
+             data-name="{{ ds.name | lower }}"
+             data-source="{{ ds.source }}">
+          <div class="dsp-grid-card-top">
+            <span class="dsp-source-badge dsp-badge-{{ ds.source }}">{{ ds.source }}</span>
+            <span style="font-size:0.72rem;color:var(--text-3)">{{ ds.version_count }} sürüm</span>
+          </div>
+          <div class="dsp-grid-card-name">{{ ds.name }}</div>
+          {% if ds.description %}
+          <div class="dsp-grid-card-desc">{{ ds.description[:120] }}{% if ds.description|length > 120 %}…{% endif %}</div>
+          {% endif %}
+          <div class="dsp-grid-card-foot">
+            <span>{{ ds.current_version or '—' }}</span>
+            {% if ds.source_ref %}
+            <span>·</span>
+            <span style="font-family:monospace;font-size:0.72rem">{{ ds.source_ref[:30] }}{% if ds.source_ref|length > 30 %}…{% endif %}</span>
+            {% endif %}
           </div>
         </div>
         {% endfor %}
-      </div>
-    </aside>
-
-    {# Resize handle #}
-    <div class="ds-resizer" id="ds-resizer"></div>
-
-    {# Sağ panel #}
-    <main class="ds-main" id="ds-main">
-      <div class="ds-placeholder" id="ds-placeholder">
-        <span style="color:var(--text-3); font-size:.85rem">Yükleniyor…</span>
-      </div>
-      <div id="ds-detail" style="display:none"></div>
-    </main>
+      {% else %}
+        <div class="dsp-grid-empty">
+          <p>Henüz dataset yok.</p>
+          <a href="/ingest">İlk dataseti arşivle →</a>
+        </div>
+      {% endif %}
+    </div>
 
   </div>
 
-</div>{# /ds-root #}
+  {# ── Detay görünümü (başta gizli) ─────────────────────────── #}
+  <div class="dsp-detail-view" id="dsp-detail-view" style="display:none">
+
+    <div class="dsp-back-bar">
+      <button class="dsp-back-btn" id="dsp-back">
+        <svg viewBox="0 0 14 14" width="12" height="12" fill="none"
+             stroke="currentColor" stroke-width="1.8">
+          <path d="M9 2L4 7l5 5"/>
+        </svg>
+        Datasets
+      </button>
+    </div>
+
+    <div class="dsp-loading" id="dsp-loading" style="display:none">
+      <div class="dsp-spinner"></div>
+    </div>
+
+    <div id="dsp-detail"></div>
+
+  </div>
+
+</div>
 
 <script>
 (function () {
-  var gridView  = document.getElementById('ds-grid-view');
-  var splitView = document.getElementById('ds-split-view');
-  var backBtn   = document.getElementById('ds-back');
-  var sidebar   = document.getElementById('ds-sidebar');
-  var resizer   = document.getElementById('ds-resizer');
-  var svList    = document.getElementById('sv-list');
-  var detailEl  = document.getElementById('ds-detail');
-  var phEl      = document.getElementById('ds-placeholder');
-  var svSearch  = document.getElementById('sv-search');
-  var gvSearch  = document.getElementById('gv-search');
-  var gvPills   = document.getElementById('gv-pills');
+  var root       = document.getElementById('dsp-root');
+  var listView   = document.getElementById('dsp-list-view');
+  var detailView = document.getElementById('dsp-detail-view');
+  var grid       = document.getElementById('dsp-grid');
+  var search     = document.getElementById('dsp-search');
+  var loadEl     = document.getElementById('dsp-loading');
+  var detailEl   = document.getElementById('dsp-detail');
+  var backBtn    = document.getElementById('dsp-back');
 
   var activeId = null;
   var inFlight = false;
 
-  // ── View transitions ──────────────────────────────────────────
-  function showGrid() {
-    splitView.style.display = 'none';
-    gridView.style.display  = '';
+  // ── Grid kart tıklama ─────────────────────────────────────────
+  grid.querySelectorAll('.dsp-grid-card').forEach(function (card) {
+    card.addEventListener('click', function () { loadDetail(card.dataset.id); });
+  });
+
+  // ── Geri butonu ───────────────────────────────────────────────
+  backBtn.addEventListener('click', function () {
+    detailView.style.display = 'none';
+    listView.style.display   = '';
     activeId = null;
     history.replaceState(null, '', '/datasets');
-  }
-
-  function showSplit(id) {
-    gridView.style.display  = 'none';
-    splitView.style.display = 'flex';
-    loadDetail(id);
-  }
-
-  backBtn.addEventListener('click', showGrid);
-
-  // ── Grid: card click ──────────────────────────────────────────
-  document.querySelectorAll('.ds-card').forEach(function (card) {
-    card.addEventListener('click', function () { showSplit(card.dataset.id); });
   });
 
-  // ── Grid: search + filter ────────────────────────────────────
-  function applyGridFilter() {
-    var q = gvSearch.value.toLowerCase().trim();
-    var src = '';
-    if (gvPills) {
-      var active = gvPills.querySelector('.ds-pill.active');
-      src = active ? active.dataset.source : '';
-    }
-    document.querySelectorAll('.ds-card').forEach(function (c) {
-      var ok = (!src || c.dataset.source === src) && (!q || c.dataset.name.includes(q));
-      c.style.display = ok ? '' : 'none';
-    });
-  }
-
-  gvSearch.addEventListener('input', applyGridFilter);
-  if (gvPills) {
-    gvPills.querySelectorAll('.ds-pill').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        gvPills.querySelectorAll('.ds-pill').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        applyGridFilter();
-      });
-    });
-  }
-
-  // ── Split: sidebar search ────────────────────────────────────
-  svSearch.addEventListener('input', function () {
-    var q = svSearch.value.toLowerCase().trim();
-    svList.querySelectorAll('.ds-item').forEach(function (item) {
-      item.style.display = (!q || item.dataset.name.includes(q)) ? '' : 'none';
+  // ── Arama ─────────────────────────────────────────────────────
+  search.addEventListener('input', function () {
+    var q = search.value.toLowerCase().trim();
+    grid.querySelectorAll('.dsp-grid-card').forEach(function (card) {
+      card.style.display = (!q || card.dataset.name.includes(q)) ? '' : 'none';
     });
   });
 
-  // ── Split: sidebar item click ────────────────────────────────
-  svList.querySelectorAll('.ds-item').forEach(function (item) {
-    item.addEventListener('click', function () { loadDetail(item.dataset.id); });
-  });
-
-  // ── Load detail ───────────────────────────────────────────────
+  // ── Detay yükle ───────────────────────────────────────────────
   async function loadDetail(id) {
     if (inFlight || activeId === id) return;
     activeId = id;
     inFlight = true;
 
-    svList.querySelectorAll('.ds-item').forEach(function (el) {
-      el.classList.toggle('selected', el.dataset.id === id);
-    });
-
-    detailEl.style.display = 'none';
-    phEl.style.display     = 'flex';
-    phEl.innerHTML = '<span style="color:var(--text-3);font-size:.83rem">Yükleniyor…</span>';
+    listView.style.display   = 'none';
+    detailView.style.display = '';
+    detailEl.innerHTML       = '';
+    loadEl.style.display     = 'flex';
 
     try {
       var res = await fetch('/api/v1/datasets/' + encodeURIComponent(id));
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var d = await res.json();
       detailEl.innerHTML = buildDetail(d.dataset, d.versions || []);
-      detailEl.style.display = '';
-      phEl.style.display     = 'none';
+      loadEl.style.display = 'none';
       history.replaceState(null, '', '/datasets#' + id);
     } catch (err) {
-      phEl.innerHTML = '<span style="color:var(--red);font-size:.83rem">Yüklenemedi: ' + esc(err.message) + '</span>';
+      loadEl.style.display = 'none';
+      detailEl.innerHTML = '<p style="color:var(--text-3);padding:2rem">Yüklenemedi: ' + esc(err.message) + '</p>';
     } finally {
       inFlight = false;
     }
   }
 
-  // ── Build detail HTML ─────────────────────────────────────────
+  // ── Detay HTML inşa ───────────────────────────────────────────
   function buildDetail(ds, versions) {
-    var latest   = versions.length ? versions[0] : null;
-    var size     = latest ? human(latest.file_size_bytes) : '—';
-    var zone     = latest ? (latest.zone || '—') : '—';
+    var latest     = versions[0] || null;
+    var size       = latest ? human(latest.file_size_bytes) : '—';
+    var fmt        = latest && latest.format ? latest.format.toUpperCase() : '—';
+    var zone       = latest ? (latest.zone || '—') : '—';
+    var cols       = latest && latest.column_count ? latest.column_count : null;
+    var meta       = (latest && latest.metadata_json) ? latest.metadata_json : {};
+    var dateStart  = meta.date_start || null;
+    var dateEnd    = meta.date_end   || null;
+    var dateCol    = meta.date_column || null;
+    var updatedAt  = latest ? (latest.created_at || '').slice(0, 10) : null;
 
-    var tags = (ds.tags || []).map(function (t) {
-      return '<span class="ds-tag">' + esc(t) + '</span>';
+    var tagsHtml = (ds.tags || []).slice(0, 10).map(function (t) {
+      return '<span class="dsp-tag">' + esc(t) + '</span>';
     }).join('');
 
-    var extLink = ds.url
-      ? '<a class="ds-source-link" href="' + esc(ds.url) + '" target="_blank" rel="noopener">' +
-        '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6">' +
-        '<path d="M7 1h4v4M11 1l-6 6M5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8"/></svg>' +
-        'Kaynak</a>' : '';
+    var descHtml = ds.description
+      ? '<p class="dsp-desc">' + esc(ds.description) + '</p>'
+      : '<p class="dsp-desc dsp-desc--empty">Açıklama henüz mevcut değil.</p>';
 
-    var desc = ds.description
-      ? '<div class="ds-head-desc">' + esc(ds.description) + '</div>'
-      : '<div class="ds-head-desc-empty">Açıklama yok — Kaggle\'dan çekmek için "Metaveryi Yenile" butonunu kullanın.</div>';
+    // Meta satırı
+    var metaHtml =
+      '<div class="dsp-meta-row">' +
+        '<span class="dsp-source-badge dsp-badge-' + esc(ds.source) + '">' + esc(ds.source) + '</span>' +
+        (ds.source_ref ? '<span class="dsp-meta-ref">' + esc(ds.source_ref) + '</span>' : '') +
+        (ds.url
+          ? '<a class="dsp-ext-link" href="' + esc(ds.url) + '" target="_blank" rel="noopener">' +
+            '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6">' +
+            '<path d="M7 1h4v4M11 1l-6 6M5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8"/></svg>' +
+            'Aç</a>'
+          : '') +
+      '</div>';
 
-    function cell(label, val, mono) {
-      return '<div class="ds-info-cell">' +
-        '<div class="ds-info-label">' + esc(label) + '</div>' +
-        '<div class="ds-info-value' + (mono ? ' mono' : '') + '">' + esc(val) + '</div></div>';
+    // Action butonları
+    var actionsHtml =
+      '<div class="dsp-header-actions">' +
+        '<button class="dsp-btn" onclick="reingestDataset(\'' + esc(ds.id) + '\')">' +
+          '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">' +
+          '<path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2"/>' +
+          '<polyline points="11 2 13.5 4.7 11 7.3"/></svg>' +
+          'Yeniden İngest' +
+        '</button>' +
+        '<button class="dsp-btn" onclick="exportDataset(\'' + esc(ds.id) + '\')" disabled>' +
+          '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">' +
+          '<path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg>' +
+          'Dışa Aktar' +
+        '</button>' +
+        '<button class="dsp-btn dsp-btn--danger" onclick="deleteDataset(\'' + esc(ds.id) + '\')">' +
+          '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">' +
+          '<path d="M3 4h10M6 4V3h4v1M5 4l.5 9h5l.5-9"/></svg>' +
+          'Sil' +
+        '</button>' +
+      '</div>';
+
+    // Temporal kapsam kartı
+    var temporalHtml = '';
+    if (dateStart || dateEnd) {
+      var rangeStr = (dateStart || '?') + ' → ' + (dateEnd || '?');
+      temporalHtml = statCard('Veri Kapsamı', rangeStr, dateCol ? 'Kolon: ' + esc(dateCol) : null);
+    } else {
+      temporalHtml = statCard('Veri Kapsamı', '—', 'Tarih kolonu bulunamadı');
     }
 
-    var infoGrid =
-      cell('Kaynak',   ds.source || '—') +
-      cell('Boyut',    size) +
-      cell('Lisans',   ds.license || '—') +
-      cell('Sürümler', String(versions.length)) +
-      cell('Bölge',    zone) +
-      cell('Ref',      ds.source_ref || '—', true);
+    // Stat kartları
+    var statCardsHtml =
+      '<div class="dsp-stat-cards">' +
+        statCard('Sürümler', String(versions.length), updatedAt ? 'Son güncelleme: ' + updatedAt : null) +
+        statCard('Boyut', size, fmt + (cols ? ' · ' + cols + ' kolon' : '')) +
+        temporalHtml +
+      '</div>';
 
-    var vRows = versions.map(function (v) {
-      return '<tr>' +
-        '<td><span class="badge version-badge">v' + esc(String(v.version)) + '</span></td>' +
-        '<td>' + esc(human(v.file_size_bytes)) + '</td>' +
-        '<td>' + esc(v.file_count || 0) + ' dosya</td>' +
-        '<td><span class="badge zone-' + esc(v.zone||'archive') + '">' + esc(v.zone||'—') + '</span></td>' +
-        '<td class="ds-info-value mono" style="font-size:.72rem">' +
-          esc((v.checksum_sha256||'').slice(0,12)||'—') + '</td>' +
-        '<td style="color:var(--text-3);font-size:.78rem">' +
-          esc((v.created_at||'—').slice(0,10)) + '</td></tr>';
-    }).join('');
+    // Açıklama kartı
+    var infoCardHtml =
+      '<div class="dsp-info-card">' +
+        '<div class="dsp-info-card-hd">Açıklama</div>' +
+        '<div class="dsp-info-card-body">' +
+          descHtml +
+          (tagsHtml
+            ? '<div class="dsp-tags-section">' +
+                '<span class="dsp-tags-label">Etiketler</span>' +
+                '<div class="dsp-tags">' + tagsHtml + '</div>' +
+              '</div>'
+            : '') +
+        '</div>' +
+      '</div>';
 
-    var vTable = vRows
-      ? '<table class="ds-ver-table"><thead><tr>' +
-        '<th>Sürüm</th><th>Boyut</th><th>Dosyalar</th><th>Bölge</th><th>Checksum</th><th>Tarih</th>' +
-        '</tr></thead><tbody>' + vRows + '</tbody></table>'
-      : '<p style="color:var(--text-3);font-size:.85rem">Henüz sürüm yok.</p>';
+    // Sürüm tablosu
+    var vTableHtml = versions.length
+      ? '<table class="dsp-ver-table">' +
+          '<thead><tr>' +
+            '<th>Sürüm</th><th>Tarih</th><th>Boyut</th><th>Satır</th><th>Format</th><th>Bölge</th><th>Checksum</th>' +
+          '</tr></thead><tbody>' +
+          versions.map(function (v) {
+            return '<tr>' +
+              '<td><span class="dsp-ver-badge">' + esc(v.version) + '</span></td>' +
+              '<td class="dsp-td-muted">' + esc((v.created_at||'').slice(0,10)) + '</td>' +
+              '<td>' + esc(human(v.file_size_bytes)) + '</td>' +
+              '<td class="dsp-td-muted">' + esc(v.row_count != null ? String(v.row_count) : '—') + '</td>' +
+              '<td class="dsp-td-muted">' + esc(v.format ? v.format.toUpperCase() : '—') + '</td>' +
+              '<td>' + zoneBadge(v.zone) + '</td>' +
+              '<td class="dsp-td-mono">' + esc((v.checksum_sha256||'').slice(0,10)||'—') + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table>'
+      : '<p class="dsp-no-versions">Henüz sürüm yok.</p>';
 
-    return '<div class="ds-detail">' +
-      '<div class="ds-head-meta">' +
-        '<span class="badge source-' + esc(ds.source) + '">' + esc(ds.source) + '</span>' +
-        extLink +
-        '<button class="ds-refresh-btn" onclick="refreshMeta(\'' + esc(ds.id) + '\',\'' + esc(ds.source) + '\')">' +
-          '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.7">' +
-          '<path d="M13 7A6 6 0 1 1 7 1a6 6 0 0 1 4.95 2.6"/>' +
-          '<path d="M13 1v3.6H9.4"/></svg>' +
-          'Metaveryi Yenile' +
-        '</button>' +
-      '</div>' +
-      '<h1 class="ds-head-title">' + esc(ds.name) + '</h1>' +
-      desc +
-      (tags ? '<div class="ds-head-tags">' + tags + '</div>' : '') +
-      '<div class="ds-info-grid">' + infoGrid + '</div>' +
-      '<div class="ds-section-head">' +
-        '<span class="ds-section-title">Sürüm Geçmişi</span>' +
-        '<span class="badge tag-badge">' + versions.length + ' sürüm</span>' +
-      '</div>' + vTable +
+    var verCardHtml =
+      '<div class="dsp-ver-card">' +
+        '<div class="dsp-ver-card-hd">' +
+          '<span>Sürüm Geçmişi</span>' +
+          '<span class="dsp-count-badge">' + versions.length + '</span>' +
+        '</div>' +
+        vTableHtml +
+      '</div>';
+
+    // Önizleme kartı
+    var previewCardHtml =
+      '<div class="dsp-preview-card" id="dsp-preview-' + esc(ds.id) + '">' +
+        '<div class="dsp-preview-hd">' +
+          '<div class="dsp-preview-hd-left">' +
+            '<span>Veri Önizleme</span>' +
+          '</div>' +
+          '<button class="dsp-preview-toggle" onclick="togglePreview(\'' + esc(ds.id) + '\')">' +
+            '<svg class="dsp-preview-icon" viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8">' +
+            '<path d="M2 5l5 5 5-5"/></svg>' +
+            '<span class="dsp-preview-toggle-label">Önizle</span>' +
+          '</button>' +
+        '</div>' +
+        '<div class="dsp-preview-body" id="dsp-preview-body-' + esc(ds.id) + '" style="display:none">' +
+          '<div class="dsp-preview-loading" id="dsp-preview-loading-' + esc(ds.id) + '">' +
+            '<div class="dsp-spinner"></div>' +
+          '</div>' +
+          '<div class="dsp-preview-error" id="dsp-preview-error-' + esc(ds.id) + '" style="display:none"></div>' +
+          '<div class="dsp-preview-table-wrap" id="dsp-preview-table-' + esc(ds.id) + '" style="display:none"></div>' +
+          '<div class="dsp-preview-footer" id="dsp-preview-footer-' + esc(ds.id) + '" style="display:none"></div>' +
+        '</div>' +
+      '</div>';
+
+    // Tam detay layout
+    return (
+      '<div class="dsp-detail">' +
+        '<div class="dsp-page-header">' +
+          '<div class="dsp-page-hd-left">' +
+            '<h1 class="dsp-title">' + esc(ds.name) + '</h1>' +
+            metaHtml +
+          '</div>' +
+          actionsHtml +
+        '</div>' +
+        statCardsHtml +
+        infoCardHtml +
+        previewCardHtml +
+        verCardHtml +
+      '</div>'
+    );
+  }
+
+  function statCard(label, val, sub) {
+    var isLong = String(val).length > 12;
+    var valCls = 'dsp-stat-card-val' + (isLong ? ' dsp-stat-card-val--sm' : '');
+    return '<div class="dsp-stat-card">' +
+      '<div class="dsp-stat-card-label">' + esc(label) + '</div>' +
+      '<div class="' + valCls + '">' + esc(val) + '</div>' +
+      (sub ? '<div class="dsp-stat-card-sub">' + esc(sub) + '</div>' : '') +
     '</div>';
   }
 
-  // ── Resizable sidebar ─────────────────────────────────────────
-  resizer.addEventListener('mousedown', function (e) {
-    var startX = e.clientX;
-    var startW = sidebar.getBoundingClientRect().width;
-    resizer.classList.add('dragging');
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+  function zoneBadge(zone) {
+    var map = { processed:'dsp-zone-processed', archive:'dsp-zone-archive', quarantine:'dsp-zone-quarantine', raw:'dsp-zone-raw' };
+    return '<span class="dsp-zone-badge ' + (map[zone]||'dsp-zone-archive') + '">' + esc(zone||'—') + '</span>';
+  }
 
-    function onMove(e) {
-      var w = Math.min(520, Math.max(160, startW + (e.clientX - startX)));
-      sidebar.style.width = w + 'px';
-    }
-    function onUp() {
-      resizer.classList.remove('dragging');
-      document.body.style.cursor = document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    e.preventDefault();
-  });
+  // ── Global action fonksiyonları ───────────────────────────────
+  window.reingestDataset = async function (id) {
+    if (!confirm('Bu dataset yeniden ingest edilecek. Devam?')) return;
+    try {
+      var res = await fetch('/api/v1/ingest', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({dataset_id: id})
+      });
+      var d = await res.json();
+      if (!res.ok) throw new Error(d.detail || 'Hata');
+      alert('İngest başlatıldı.');
+    } catch (e) { alert('Hata: ' + e.message); }
+  };
 
-  // ── Refresh metadata ──────────────────────────────────────────
-  window.refreshMeta = async function (id, source) {
-    var btn = document.querySelector('.ds-refresh-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Yenileniyor…'; }
+  window.exportDataset = function () { alert('Dışa aktarma yakında gelecek.'); };
+
+  // ── Preview ───────────────────────────────────────────────────
+  var previewCache = {};
+
+  window.togglePreview = async function (id) {
+    var card   = document.getElementById('dsp-preview-' + id);
+    var body   = document.getElementById('dsp-preview-body-' + id);
+    var toggle = card && card.querySelector('.dsp-preview-toggle');
+    if (!body) return;
+
+    var open = body.style.display !== 'none';
+    if (open) {
+      body.style.display = 'none';
+      if (toggle) toggle.classList.remove('dsp-preview-toggle--open');
+      return;
+    }
+
+    body.style.display = '';
+    if (toggle) toggle.classList.add('dsp-preview-toggle--open');
+
+    // Already loaded
+    if (previewCache[id]) return;
+
+    var loadEl  = document.getElementById('dsp-preview-loading-' + id);
+    var errEl   = document.getElementById('dsp-preview-error-'   + id);
+    var tableEl = document.getElementById('dsp-preview-table-'   + id);
+    var footEl  = document.getElementById('dsp-preview-footer-'  + id);
+
+    loadEl.style.display  = 'flex';
+    errEl.style.display   = 'none';
+    tableEl.style.display = 'none';
+    footEl.style.display  = 'none';
 
     try {
-      var res = await fetch('/api/v1/datasets/' + encodeURIComponent(id) + '/refresh-metadata', {method: 'POST'});
+      var res = await fetch('/api/v1/datasets/' + encodeURIComponent(id) + '/preview');
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      // reload detail with fresh data
-      activeId = null;
-      loadDetail(id);
+      var d = await res.json();
+
+      if (d.error) {
+        var msg = {
+          'no_readable_file' : 'Bu dataset için önizlenebilir dosya bulunamadı.',
+          'read_failed'      : 'Dosya okunurken hata oluştu: ' + (d.error_detail || ''),
+          'pandas_missing'   : 'Sunucuda pandas kütüphanesi eksik.',
+          'unsupported_format': 'Desteklenmeyen dosya formatı.',
+        }[d.error] || ('Hata: ' + d.error);
+        errEl.textContent   = msg;
+        errEl.style.display = 'block';
+        loadEl.style.display = 'none';
+        return;
+      }
+
+      tableEl.innerHTML = buildPreviewTable(d);
+      tableEl.style.display = '';
+
+      var info = d.preview_rows + ' satır gösteriliyor';
+      if (d.total_rows > d.preview_rows) info += ' (toplam ' + d.total_rows + ')';
+      if (d.truncated_columns) info += ' · ' + d.columns.length + ' sütun gösteriliyor (toplam ' + d.total_columns + ')';
+      info += ' · ' + esc(d.source_file);
+      footEl.textContent   = info;
+      footEl.style.display = '';
+
+      previewCache[id] = true;
     } catch (err) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Metaveryi Yenile'; }
-      alert('Yenileme başarısız: ' + err.message);
+      errEl.textContent   = 'Yüklenemedi: ' + err.message;
+      errEl.style.display = 'block';
+    } finally {
+      loadEl.style.display = 'none';
     }
+  };
+
+  function buildPreviewTable(d) {
+    var cols = d.columns;
+    var rows = d.rows;
+    if (!cols || !cols.length) return '<p class="dsp-no-versions">Sütun bulunamadı.</p>';
+
+    var thead = '<thead><tr>' +
+      cols.map(function (c) { return '<th title="' + esc(d.dtypes[c] || '') + '">' + esc(c) + '</th>'; }).join('') +
+      '</tr></thead>';
+
+    var tbody = '<tbody>' +
+      rows.map(function (row) {
+        return '<tr>' +
+          cols.map(function (c) {
+            var v = row[c];
+            if (v === null || v === undefined) return '<td><span class="dsp-null">—</span></td>';
+            var s = String(v);
+            return '<td title="' + esc(s) + '">' + esc(s) + '</td>';
+          }).join('') +
+          '</tr>';
+      }).join('') +
+      '</tbody>';
+
+    return '<table class="dsp-preview-table">' + thead + tbody + '</table>';
+  }
+
+  window.deleteDataset = async function (id) {
+    if (!confirm('Bu dataset silinecek. Bu işlem geri alınamaz!')) return;
+    try {
+      var res = await fetch('/api/v1/datasets/' + encodeURIComponent(id), {method: 'DELETE'});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      // Grid kartını kaldır
+      var card = grid.querySelector('.dsp-grid-card[data-id="' + id + '"]');
+      if (card) card.remove();
+      // Liste görünümüne dön
+      backBtn.click();
+    } catch (e) { alert('Silinemedi: ' + e.message); }
   };
 
   // ── Helpers ───────────────────────────────────────────────────
   function esc(s) {
-    return String(s==null?'':s)
+    return String(s == null ? '' : s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
   function human(b) {
-    b = Number(b)||0;
-    if (b<1024)       return b+' B';
-    if (b<1048576)    return (b/1024).toFixed(1)+' KB';
-    if (b<1073741824) return (b/1048576).toFixed(1)+' MB';
-    return (b/1073741824).toFixed(2)+' GB';
+    b = Number(b) || 0;
+    if (b < 1024)       return b + ' B';
+    if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+    return (b/1073741824).toFixed(2) + ' GB';
   }
 
-  // ── Deep link via hash ────────────────────────────────────────
+  // ── Hash ile derin bağlantı ───────────────────────────────────
   var hash = location.hash.slice(1);
-  if (hash && document.querySelector('.ds-item[data-id="' + hash + '"]')) {
-    showSplit(hash);
+  if (hash && grid.querySelector('.dsp-grid-card[data-id="' + hash + '"]')) {
+    loadDetail(hash);
   }
 })();
 </script>

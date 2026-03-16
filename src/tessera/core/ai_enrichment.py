@@ -1,7 +1,8 @@
-"""AI-powered dataset description generation using Claude API."""
+"""AWS Bedrock tabanlı dataset description zenginleştirme."""
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -11,36 +12,30 @@ if TYPE_CHECKING:
 
 
 def enrich_description(data_path: Path, info: "DatasetInfo", config: dict | None = None) -> str | None:
-    """Analyze dataset files with Claude and return a generated description.
+    """Bedrock Claude ile dataset açıklaması üret.
 
-    Returns None silently if anthropic is not installed, API key is missing,
-    or the file cannot be read — so the caller can safely ignore failures.
+    Hata durumunda None döner — çağıran kod bunu güvenle görmezden gelebilir.
     """
     cfg = config or {}
     if not cfg.get("enabled", False):
         return None
 
     try:
-        import anthropic
+        import boto3
+        from botocore.exceptions import BotoCoreError, ClientError
     except ImportError:
         return None
 
-    api_key = (
-        cfg.get("api_key")
-        or os.getenv("ANTHROPIC_API_KEY")
-        or os.getenv("CLAUDE_API_KEY")
-    )
-    if not api_key:
-        return None
+    model_id = cfg.get("model", "eu.anthropic.claude-haiku-4-5-20251001-v1:0")
+    region   = cfg.get("region", os.getenv("AWS_DEFAULT_REGION", "eu-central-1"))
+    max_tokens = int(cfg.get("max_tokens", 1024))
 
     file_summary = _summarize_files(data_path, max_files=cfg.get("max_files", 3))
     if not file_summary:
         return None
 
-    source_line = f"Kaynak: {info.source} — {info.source_ref}" if info.source_ref else ""
-    existing_hint = (
-        f"Mevcut kısa açıklama: {info.description}\n" if info.description else ""
-    )
+    source_line   = f"Kaynak: {info.source} — {info.source_ref}" if info.source_ref else ""
+    existing_hint = f"Mevcut kısa açıklama: {info.description}\n" if info.description else ""
 
     prompt = (
         f"Sen bir veri bilimcisisin. Aşağıdaki dataset bilgilerini analiz ederek "
@@ -56,24 +51,33 @@ def enrich_description(data_path: Path, info: "DatasetInfo", config: dict | None
         f"4. Olası kullanım alanları ve araştırma soruları"
     )
 
-    model = cfg.get("model", "claude-haiku-4-5-20251001")
-    max_tokens = int(cfg.get("max_tokens", 1024))
+    body = json.dumps({
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": prompt}],
+    })
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}],
+        client = boto3.client("bedrock-runtime", region_name=region)
+        response = client.invoke_model(
+            modelId=model_id,
+            body=body,
+            contentType="application/json",
+            accept="application/json",
         )
-        text = msg.content[0].text if msg.content else None
-        return text.strip() if text else None
+        result  = json.loads(response["body"].read())
+        content = result.get("content", [])
+        if content and content[0].get("type") == "text":
+            return content[0]["text"].strip()
+        return None
+    except (BotoCoreError, ClientError):
+        return None
     except Exception:
         return None
 
 
 def _summarize_files(data_path: Path, max_files: int = 3) -> str | None:
-    """Read column names, types, and sample rows from CSV/Parquet files."""
+    """CSV/Parquet dosyalarından kolon adları, tipler ve örnek satırlar çıkar."""
     try:
         import pandas as pd
     except ImportError:
@@ -100,9 +104,7 @@ def _summarize_files(data_path: Path, max_files: int = 3) -> str | None:
             else:
                 continue
 
-            cols = ", ".join(
-                f"{col} ({df[col].dtype})" for col in list(df.columns)[:25]
-            )
+            cols   = ", ".join(f"{col} ({df[col].dtype})" for col in list(df.columns)[:25])
             sample = df.head(3).to_string(index=False, max_cols=12)
             summaries.append(
                 f"Dosya: {fp.name}\n"

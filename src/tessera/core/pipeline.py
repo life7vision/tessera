@@ -214,6 +214,10 @@ class Pipeline:
                 )
                 final_processed_artifact = self._primary_artifact(processed_path)
 
+                from tessera.core.temporal import detect_temporal_coverage
+                temporal = detect_temporal_coverage(raw_path)
+                enriched_metadata = {**validation_metadata, **temporal}
+
                 dataset_id = dataset["id"] if dataset else self.catalog.register_dataset(metadata)
                 version_id = self.catalog.register_version(
                     dataset_id,
@@ -229,7 +233,7 @@ class Pipeline:
                         "compression": self._compression_name(final_processed_artifact),
                         "row_count": validation_metadata.get("row_count"),
                         "column_count": validation_metadata.get("column_count"),
-                        "metadata_json": validation_metadata,
+                        "metadata_json": enriched_metadata,
                     },
                 )
                 self.catalog.record_lineage(
@@ -407,13 +411,17 @@ class Pipeline:
             return self.config.get(key, default if default is not None else {})
         return default if default is not None else {}
 
+    _DATA_SUFFIXES = {".csv", ".parquet", ".json", ".tsv", ".xlsx", ".jsonl"}
+    _SKIP_SUFFIXES = {".md", ".txt", ".yaml", ".yml", ".toml", ".rst", ".html", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".zip", ".tar", ".gz", ".zst"}
+
     def _primary_artifact(self, path: Path) -> Path:
         if path.is_file():
             return path
-        files = sorted(item for item in path.rglob("*") if item.is_file())
-        if not files:
+        all_files = sorted(item for item in path.rglob("*") if item.is_file())
+        if not all_files:
             raise PipelineError(f"Islenecek dosya bulunamadi: {path}")
-        return files[0]
+        data_files = [f for f in all_files if f.suffix.lower() in self._DATA_SUFFIXES]
+        return data_files[0] if data_files else all_files[0]
 
     def _compute_checksum(self, path: Path) -> str:
         return compute_file_checksum(path) if path.is_file() else compute_directory_checksum(path)

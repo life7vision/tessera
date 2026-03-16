@@ -20,12 +20,14 @@ class FormatTransformer(BaseTransformer):
     input_formats = ["csv", "json", "parquet"]
     output_format = "parquet"
 
+    _DATA_SUFFIXES = {".csv", ".json", ".parquet", ".tsv", ".jsonl"}
+
     def transform(self, input_path: Path, output_path: Path, **kwargs) -> TransformResult:
         start = time.perf_counter()
         target_format = kwargs.get("target_format") or self.config.get("default_format", "parquet")
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if target_format == "original":
+        if input_path.suffix.lower() not in self._DATA_SUFFIXES or target_format == "original":
             try:
                 output_path.write_bytes(input_path.read_bytes())
             except OSError as exc:

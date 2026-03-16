@@ -66,10 +66,11 @@ hooks:
 
 ai_enrichment:
   enabled: true
-  model: "claude-haiku-4-5-20251001"
+  model: "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  region: "eu-central-1"
   max_tokens: 1024
   max_files: 3
-  min_description_length: 80   # generate only if existing desc is shorter than this
+  min_description_length: 80   # mevcut açıklama bundan kısaysa yeniden üret
 
 logging:
   level: "INFO"

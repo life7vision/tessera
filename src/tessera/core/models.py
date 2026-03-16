@@ -79,14 +79,14 @@ class ProjectConfig(TesseraBaseModel):
 
 
 class AiEnrichmentConfig(TesseraBaseModel):
-    """Claude AI-powered dataset description enrichment."""
+    """AWS Bedrock tabanlı dataset description zenginleştirme."""
 
     enabled: bool = False
-    model: str = "claude-haiku-4-5-20251001"
+    model: str = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+    region: str = "eu-central-1"
     max_tokens: int = Field(default=1024, ge=128, le=4096)
     max_files: int = Field(default=3, ge=1, le=10)
     min_description_length: int = Field(default=80, ge=0)
-    api_key: str | None = None
 
 
 class AppConfig(TesseraBaseModel):

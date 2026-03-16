@@ -10,6 +10,11 @@ Tessera, kurumsal veri arşivleme akışları için tasarlanmış modüler bir d
 - `click` + `rich` tabanlı CLI
 - Pydantic ile doğrulanan YAML konfigürasyon yapısı
 - Mock tabanlı, network gerektirmeyen test kapsamı
+- Claude Console ilhamı neurodesign dataset arayüzü (grid → detay geçişi)
+- AWS Bedrock (Claude Haiku) ile otomatik AI dataset description üretimi
+- Otomatik temporal coverage tespiti (`date_start`, `date_end`, `date_column`)
+- Dataset içeriği önizleme (ilk 100 satır, tablo görünümü)
+- AWS EC2 + nginx + systemd ile production deploy
 
 ## Kurulum
 
@@ -24,18 +29,6 @@ Yeni bir arşiv dizini başlat:
 
 ```bash
 .venv/bin/tessera init --path ./my-archive
-```
-
-Varsayılan konfigürasyonu göster:
-
-```bash
-.venv/bin/tessera config show
-```
-
-Plugin listesini görüntüle:
-
-```bash
-.venv/bin/tessera plugin list
 ```
 
 Dataset ingest et:
@@ -66,7 +59,7 @@ Sonra tarayıcıda `http://127.0.0.1:8000` adresini açabilirsiniz.
 
 ## Konfigürasyon
 
-Varsayılan konfigürasyon dosyası [config/default.yaml](/run/media/life7vision/DataSSD/projects/Tessera/config/default.yaml) içindedir. İsterseniz `--config` seçeneği veya `TESSERA_CONFIG` ortam değişkeni ile farklı bir dosya kullanabilirsiniz.
+Varsayılan konfigürasyon dosyası `config/default.yaml` içindedir. `--config` seçeneği veya `TESSERA_CONFIG` ortam değişkeni ile farklı bir dosya kullanabilirsiniz.
 
 Nested env override örnekleri:
 
@@ -76,37 +69,138 @@ export TESSERA_PROCESSING__COMPRESSION=gzip
 export TESSERA_LOGGING__LEVEL=DEBUG
 ```
 
+### AI Zenginleştirme (AWS Bedrock)
+
+Dataset description'ları çok kısa veya boş olduğunda Claude Haiku ile otomatik üretilebilir. `config/default.yaml` içinde:
+
+```yaml
+ai_enrichment:
+  enabled: true
+  model: eu.anthropic.claude-haiku-4-5-20251001-v1:0
+  region: eu-central-1
+  max_tokens: 1024
+  min_description_length: 80
+```
+
+AWS kimlik bilgileri `~/.aws/credentials` veya ortam değişkenleri (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) üzerinden okunur.
+
 ## CLI Komutları
 
-- `tessera init`
-- `tessera ingest`
-- `tessera search`
-- `tessera inspect`
-- `tessera list`
-- `tessera export`
-- `tessera config show`
-- `tessera config validate`
-- `tessera plugin list`
-- `tessera plugin info`
-- `tessera stats`
-- `tessera web`
+| Komut | Açıklama |
+|---|---|
+| `tessera init` | Yeni arşiv dizini başlat |
+| `tessera ingest` | Dataset ingest et |
+| `tessera search` | Katalogda ara |
+| `tessera inspect` | Dataset detaylarını göster |
+| `tessera list` | Tüm datasetleri listele |
+| `tessera export` | Dataset dışa aktar |
+| `tessera config show` | Konfigürasyonu göster |
+| `tessera config validate` | Konfigürasyonu doğrula |
+| `tessera plugin list` | Plugin listesi |
+| `tessera plugin info` | Plugin detayı |
+| `tessera stats` | Arşiv istatistikleri |
+| `tessera web` | Web arayüzünü başlat |
 
 ## Web Arayüzü
 
-Faz 9 ile birlikte minimal bir web frontend eklendi:
+Claude Console tasarım dilinden ilham alan, neurodesign ilkelerine uygun modern arayüz.
 
-- Ana sayfa: `/`
-- Arama sonuçları: `/search`
-- Dataset detay: `/dataset/{dataset_id}`
-- Pipeline görünümü: `/pipeline`
-- JSON API: `/api/v1/*`
+### Sayfalar
 
-Frontend yapısı:
+| Route | Açıklama |
+|---|---|
+| `/` | Ana sayfa — arşiv istatistikleri |
+| `/datasets` | Dataset listesi (grid) → detay görünümü |
+| `/ingest` | Yeni dataset arşivleme formu |
+| `/settings` | Connector kimlik bilgileri ve konfigürasyon |
+| `/api/v1/*` | JSON REST API |
 
-- `src/tessera/web/app.py`: FastAPI app factory
-- `src/tessera/web/routes`: HTML ve JSON route'lar
-- `src/tessera/web/templates`: Jinja2 template'ler
-- `src/tessera/web/static`: CSS ve minimal JS
+### Datasets Sayfası
+
+İki modlu tasarım:
+
+1. **Grid görünümü** — arama destekli dataset kartları
+2. **Detay görünümü** — kart tıklanınca tam sayfa detay açılır
+
+Detay sayfasında:
+- Sürüm sayısı, dosya boyutu, **temporal kapsam** (date_start / date_end) stat kartları
+- Açıklama ve etiketler
+- **Veri Önizleme** — "Önizle" butonuyla ilk 100 satırı tablo olarak görüntüle
+- Sürüm geçmişi tablosu (checksum, format, bölge, boyut)
+- Yeniden ingest ve silme aksiyonları
+
+### JSON API
+
+```
+GET  /api/v1/datasets                       # Dataset listesi
+GET  /api/v1/datasets/{id}                  # Dataset + sürümler
+GET  /api/v1/datasets/{id}/preview          # İlk 100 satır önizleme
+GET  /api/v1/datasets/{id}/lineage          # Veri soy ağacı
+POST /api/v1/datasets/{id}/refresh-metadata # Kaynak metadatayı yenile
+GET  /api/v1/stats                          # Arşiv istatistikleri
+GET  /api/v1/plugins                        # Yüklü plugin listesi
+GET  /api/v1/storage                        # Zone disk kullanımı
+GET  /api/v1/credentials                    # Kimlik bilgisi durumu
+POST /api/v1/ingest                         # Arka planda ingest başlat
+GET  /api/v1/ingest/{job_id}                # İngest iş durumu
+```
+
+## Pipeline Akışı
+
+```
+Connector (download)
+    → Duplicate check (checksum)
+    → Validators (integrity, schema, quality)
+    → Transformers (clean, format → parquet, compress → zstd)
+    → Temporal coverage detection (date_start, date_end)
+    → Catalog registration (dataset + version + lineage)
+    → Profile export (JSON raporu)
+    → AI enrichment (AWS Bedrock — opsiyonel)
+```
+
+## Proje Yapısı
+
+```
+src/tessera/
+├── core/
+│   ├── pipeline.py          # Orkestrasyon
+│   ├── catalog.py           # SQLite katalog
+│   ├── storage.py           # Zone yönetimi
+│   ├── temporal.py          # Tarih aralığı tespiti
+│   ├── ai_enrichment.py     # AWS Bedrock entegrasyonu
+│   ├── versioning.py        # Semantic versioning
+│   ├── audit.py             # Audit log
+│   ├── hashing.py           # SHA-256 checksum
+│   ├── models.py            # Pydantic konfigürasyon modelleri
+│   └── registry.py          # Plugin registry
+├── connectors/              # Kaggle, HuggingFace, GitHub
+├── validators/              # integrity, schema, quality
+├── transformers/            # clean, format, compress
+├── exporters/               # report (JSON profil)
+├── hooks/                   # Event hook'ları
+└── web/
+    ├── app.py               # FastAPI factory
+    ├── routes/              # HTML + JSON endpoint'ler
+    ├── templates/           # Jinja2 template'ler
+    └── static/              # CSS + JS
+```
+
+## Production Deploy (AWS)
+
+Proje AWS üzerinde çalışmaktadır:
+
+- **EC2**: t3.small, Amazon Linux 2023, `eu-central-1`
+- **Sunucu**: `63.177.161.196`
+- **Reverse proxy**: nginx
+- **Servis yönetimi**: systemd (`tessera.service`)
+- **Depolama**: S3 bucket `tessera-datasets-715557237960`
+
+Deploy için:
+
+```bash
+rsync -av -e "ssh -i ~/.ssh/tessera-deploy.pem" src/ ec2-user@63.177.161.196:/home/ec2-user/tessera/src/
+ssh -i ~/.ssh/tessera-deploy.pem ec2-user@63.177.161.196 "sudo systemctl restart tessera"
+```
 
 ## Geliştirme
 
@@ -116,25 +210,19 @@ Testleri çalıştır:
 .venv/bin/python -m pytest -q
 ```
 
-Kod yapısı özetle şu katmanlardan oluşur:
+## Uygulanan Fazlar
 
-- `src/tessera/core`: config, storage, catalog, audit, pipeline, registry
-- `src/tessera/connectors`: kaynak connector pluginleri
-- `src/tessera/validators`: kalite ve şema kontrolleri
-- `src/tessera/transformers`: temizleme, format ve sıkıştırma akışları
-- `src/tessera/exporters`: dışa aktarma ve profiling raporları
-- `src/tessera/hooks`: event hook implementasyonları
-- `tests`: tüm modüller için pytest kapsamı
-
-## Durum
-
-Uygulanan fazlar:
-
-- Faz 1: Foundation
-- Faz 2: Storage, catalog, audit
-- Faz 3: Plugin interfaces ve registry
-- Faz 4: Plugin implementasyonları
-- Faz 5: Pipeline orchestrator
-- Faz 6: CLI
-- Faz 7: Test genişletmesi
-- Faz 8: Dokümantasyon ve finalizasyon
+| Faz | Kapsam |
+|---|---|
+| Faz 1 | Foundation — proje iskelet, pyproject, config |
+| Faz 2 | Storage, catalog, audit (SQLite) |
+| Faz 3 | Plugin interfaces ve registry |
+| Faz 4 | Plugin implementasyonları (connectors, validators, transformers, exporters, hooks) |
+| Faz 5 | Pipeline orchestrator |
+| Faz 6 | CLI (click + rich) |
+| Faz 7 | Test genişletmesi |
+| Faz 8 | Dokümantasyon ve finalizasyon |
+| Faz 9 | Web arayüzü (FastAPI + Jinja2) |
+| Faz 10 | Datasets UI yeniden tasarımı (Claude Console ilhamı, grid → detay) |
+| Faz 11 | AWS altyapısı (EC2, nginx, systemd, S3, IAM) + Bedrock AI enrichment |
+| Faz 12 | Temporal coverage tespiti + Dataset preview (100 satır tablo) |

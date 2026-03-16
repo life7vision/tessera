@@ -21,8 +21,26 @@ class CleanTransformer(BaseTransformer):
     input_formats = ["csv", "json", "parquet"]
     output_format = "cleaned"
 
+    _DATA_SUFFIXES = {".csv", ".json", ".parquet", ".tsv", ".jsonl"}
+
     def transform(self, input_path: Path, output_path: Path, **kwargs) -> TransformResult:
         start = time.perf_counter()
+
+        if input_path.suffix.lower() not in self._DATA_SUFFIXES:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(input_path.read_bytes())
+            return TransformResult(
+                transformer_name=self.name,
+                success=True,
+                input_path=input_path,
+                output_path=output_path,
+                input_checksum=compute_file_checksum(input_path),
+                output_checksum=compute_file_checksum(output_path),
+                input_size=input_path.stat().st_size,
+                output_size=output_path.stat().st_size,
+                duration_ms=int((time.perf_counter() - start) * 1000),
+                details={"skipped": True, "reason": "unsupported_format"},
+            )
 
         try:
             dataframe = self._load_dataframe(input_path)

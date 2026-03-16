@@ -21,9 +21,19 @@ class QualityValidator(BaseValidator):
     name = "quality"
     version = "0.1.0"
 
+    _DATA_SUFFIXES = {".csv", ".json", ".parquet", ".tsv", ".xlsx"}
+
     def validate(self, file_path: Path, metadata: dict | None = None) -> ValidationResult:
         start = time.perf_counter()
         issues: list[ValidationIssue] = []
+        if file_path.suffix.lower() not in self._DATA_SUFFIXES:
+            return ValidationResult(
+                validator_name=self.name,
+                level=ValidationLevel.PASSED,
+                issues=[],
+                duration_ms=int((time.perf_counter() - start) * 1000),
+                metadata={"row_count": 0, "column_count": 0},
+            )
         dataframe = self._load_dataframe(file_path)
         if dataframe.empty:
             issues.append(
@@ -79,5 +89,5 @@ class QualityValidator(BaseValidator):
             return pd.read_json(file_path)
         if file_path.suffix == ".parquet":
             return pd.read_parquet(file_path)
-        raise ValueError(f"Desteklenmeyen kalite dosya formati: {file_path.suffix}")
+        return pd.DataFrame()
 
