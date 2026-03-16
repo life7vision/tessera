@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Tessera — Veri Arşivi{% endblock %}
+{% block content %}
+<div class="home">
+
+  <div class="home-hero">
+    <div class="home-brand">
+      <svg viewBox="0 0 18 18" width="32" height="32" aria-hidden="true">
+        <rect x="1" y="1" width="7" height="7" rx="1.5" fill="#cad72d"/>
+        <rect x="10" y="1" width="7" height="7" rx="1.5" fill="#0f9e79"/>
+        <rect x="1" y="10" width="7" height="7" rx="1.5" fill="#d86b42"/>
+        <rect x="10" y="10" width="7" height="7" rx="1.5" fill="#3d88d9"/>
+      </svg>
+      <h1>Tessera</h1>
+    </div>
+    <p class="home-subtitle">Veri setlerini ara, keşfet, arşivle.</p>
+
+    <form action="/search" method="get" class="search-form" data-live-search>
+      <input
+        type="text"
+        name="q"
+        placeholder="Dataset ara..."
+        class="search-input"
+        autocomplete="off"
+        autofocus
+      >
+      <button type="submit" class="search-btn">Ara</button>
+    </form>
+
+    <div class="search-hints">
+      <a href="/search?source=kaggle">kaggle</a>
+      <a href="/search?source=huggingface">huggingface</a>
+      <a href="/search?tag=classification">classification</a>
+      <a href="/search?tag=nlp">nlp</a>
+    </div>
+
+    <div class="live-results" data-live-results hidden></div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-value">{{ stats.total_datasets }}</div>
+      <div class="stat-label">Dataset</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ stats.total_versions }}</div>
+      <div class="stat-label">Versiyon</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ stats.total_size_human }}</div>
+      <div class="stat-label">Toplam</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">{{ stats.sources | length }}</div>
+      <div class="stat-label">Kaynak</div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

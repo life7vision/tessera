@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Tessera — {{ dataset.name }}{% endblock %}
+{% block content %}
+
+<div class="detail-layout">
+
+  <!-- Main column -->
+  <div>
+    <div class="detail-main">
+      <p class="eyebrow">{{ dataset.source }}</p>
+      <h1>{{ dataset.name }}</h1>
+      <p class="detail-desc">{{ dataset.description or "Açıklama yok." }}</p>
+      <div class="detail-tags">
+        <button class="copy-btn" data-copy="{{ dataset.id }}" title="ID kopyala">{{ dataset.id[:18] }}…</button>
+        {% for tag in dataset.tags %}
+        <span class="badge tag-badge">{{ tag }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Versions -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Versiyonlar</h2>
+        <span class="badge tag-badge">{{ versions | length }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Versiyon</th>
+              <th>Zone</th>
+              <th>Boyut</th>
+              <th>Format</th>
+              <th>Tarih</th>
+              <th>Checksum</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in versions %}
+            <tr>
+              <td><span class="badge version-badge">{{ v.version }}</span></td>
+              <td><span class="badge zone-{{ v.zone }}">{{ v.zone }}</span></td>
+              <td data-human-size="{{ v.file_size_bytes }}">{{ v.file_size_bytes }}</td>
+              <td>{{ v.format or "—" }}</td>
+              <td>{{ v.created_at[:10] }}</td>
+              <td>
+                <button class="copy-btn" data-copy="{{ v.checksum_sha256 }}" title="Checksum kopyala">
+                  {{ v.checksum_sha256[:10] }}…
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="color:var(--text-3)">Versiyon kaydı yok.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Lineage -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Lineage</h2>
+        <span class="badge tag-badge">{{ lineage | length }}</span>
+      </div>
+      <div style="padding-top:1rem;">
+        {% for entry in lineage %}
+        <div class="tl-item">
+          <div class="tl-dot-col">
+            <div class="tl-dot {{ entry.status }}"></div>
+            {% if not loop.last %}<div class="tl-line"></div>{% endif %}
+          </div>
+          <div class="tl-body">
+            <div class="tl-head">
+              <span class="tl-op">{{ entry.operation }}</span>
+              <span class="badge tag-badge">{{ entry.plugin_name }}</span>
+              <span class="badge status-{{ entry.status }}">{{ entry.status }}</span>
+              {% if entry.duration_ms %}
+              <span style="font-size:0.75rem; color:var(--text-3)">{{ entry.duration_ms }} ms</span>
+              {% endif %}
+              <span class="tl-time">{{ entry.created_at[11:16] }}</span>
+            </div>
+            {% if entry.error_message %}
+            <p class="tl-error">{{ entry.error_message }}</p>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <p style="color:var(--text-3); font-size:0.88rem;">Lineage kaydı yok.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside>
+    <div class="sidebar-card">
+      <div class="sidebar-card-head">Metadata</div>
+      <dl>
+        <div>
+          <dt>Kaynak Ref</dt>
+          <dd style="font-size:0.82rem; word-break:break-all;">{{ dataset.source_ref }}</dd>
+        </div>
+        <div>
+          <dt>Güncel Versiyon</dt>
+          <dd><span class="badge version-badge">{{ dataset.current_version }}</span></dd>
+        </div>
+        {% if latest %}
+        <div>
+          <dt>Format</dt>
+          <dd>{{ latest.format or "—" }}</dd>
+        </div>
+        <div>
+          <dt>Sıkıştırma</dt>
+          <dd>{{ latest.compression or "—" }}</dd>
+        </div>
+        <div>
+          <dt>Boyut</dt>
+          <dd data-human-size="{{ latest.file_size_bytes }}">{{ latest.file_size_bytes }}</dd>
+        </div>
+        <div>
+          <dt>Satır</dt>
+          <dd>{{ latest.row_count or "—" }}</dd>
+        </div>
+        <div>
+          <dt>Sütun</dt>
+          <dd>{{ latest.column_count or "—" }}</dd>
+        </div>
+        <div>
+          <dt>Zone</dt>
+          <dd><span class="badge zone-{{ latest.zone }}">{{ latest.zone }}</span></dd>
+        </div>
+        {% endif %}
+        <div>
+          <dt>Oluşturulma</dt>
+          <dd>{{ dataset.created_at[:10] }}</dd>
+        </div>
+        <div>
+          <dt>Güncelleme</dt>
+          <dd>{{ dataset.updated_at[:10] }}</dd>
+        </div>
+      </dl>
+    </div>
+  </aside>
+
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tessera"
+version = "0.1.0"
+description = "Enterprise-grade dataset archival system with plugin architecture"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Tessera Contributors" }]
+dependencies = [
+    "click>=8.1",
+    "fastapi>=0.109",
+    "jinja2>=3.1",
+    "jsonschema>=4.20",
+    "pandas>=2.1",
+    "pyarrow>=14.0",
+    "pydantic>=2.0",
+    "PyYAML>=6.0",
+    "requests>=2.31",
+    "rich>=13.0",
+    "tqdm>=4.65",
+    "uvicorn[standard]>=0.27",
+    "zstandard>=0.22",
+    "kaggle>=1.6",
+    "huggingface-hub>=0.20",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.12",
+]
+
+[project.scripts]
+tessera = "tessera.cli.main:cli"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

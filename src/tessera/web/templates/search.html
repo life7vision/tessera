@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Tessera — Arama{% endblock %}
+{% block nav_search %}
+<form action="/search" method="get" class="nav-search">
+  <input type="text" name="q" value="{{ query }}" placeholder="Dataset ara..." class="nav-search-input" autocomplete="off">
+</form>
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1>
+    {% if query %}
+      &ldquo;{{ query }}&rdquo; için sonuçlar
+    {% else %}
+      Tüm Katalog
+    {% endif %}
+  </h1>
+  <p>{{ count }} kayıt bulundu.</p>
+</div>
+
+{% if source or tag or zone %}
+<div class="filter-bar">
+  <span class="filter-label">Filtre:</span>
+  {% if source %}<span class="badge source-{{ source }}">{{ source }}</span>{% endif %}
+  {% if tag %}<span class="badge tag-badge">{{ tag }}</span>{% endif %}
+  {% if zone %}<span class="badge zone-{{ zone }}">{{ zone }}</span>{% endif %}
+  <a href="/search{% if query %}?q={{ query }}{% endif %}" style="font-size:0.78rem; color:var(--text-3); margin-left:auto;">Temizle</a>
+</div>
+{% endif %}
+
+<div class="result-list">
+  {% for item in results %}
+  <a href="/dataset/{{ item.id }}" class="result-card">
+    <div class="result-top">
+      <span class="result-name">{{ item.name }}</span>
+      <span class="badge source-{{ item.source }}">{{ item.source }}</span>
+      <span class="badge version-badge">v{{ item.current_version }}</span>
+    </div>
+    <p class="result-desc">{{ item.description or "Açıklama yok." }}</p>
+    <div class="result-meta">
+      {% for tag_item in item.tags %}
+      <span class="badge tag-badge">{{ tag_item }}</span>
+      {% endfor %}
+      <span class="result-date">{{ item.updated_at[:10] }}</span>
+    </div>
+  </a>
+  {% else %}
+  <div class="empty-state">
+    <p style="font-size:1rem; font-weight:500; color:var(--text);">Sonuç bulunamadı</p>
+    <p>Farklı bir arama terimi veya filtre dene.</p>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

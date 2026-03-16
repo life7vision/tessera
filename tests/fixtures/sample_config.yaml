@@ -1,0 +1,50 @@
+project:
+  name: "test-archive"
+  version: "0.1.0"
+
+storage:
+  base_path: "./test_data"
+  zones:
+    raw: "raw"
+    processed: "processed"
+    archive: "archive"
+    quarantine: "quarantine"
+  catalog_db: "catalog.db"
+  audit_db: "audit.db"
+
+ingestion:
+  default_connector: "kaggle"
+  checksum_algorithm: "sha256"
+  skip_existing: true
+  quarantine_on_fail: true
+
+processing:
+  default_format: "parquet"
+  compression: "zstd"
+  compression_level: 3
+  auto_profile: false
+
+versioning:
+  strategy: "semantic"
+  keep_versions: 5
+  archive_older: true
+
+connectors: {}
+
+validators:
+  - integrity
+  - schema
+
+transformers:
+  - clean
+  - format
+
+hooks:
+  pre_ingest: []
+  post_ingest: []
+  on_error: []
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  file: null

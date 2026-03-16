@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+{% block title %}Tessera — Ayarlar{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1>Ayarlar</h1>
+  <p>Servis bağlantıları, konfigürasyon ve depolama durumu.</p>
+</div>
+
+<div class="settings-layout">
+
+  <!-- ── Servis Bağlantıları ──────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <h2>Servis Bağlantıları</h2>
+      <p>API anahtarları <code>.env</code> dosyasına kaydedilir, veritabanına yazılmaz.</p>
+    </div>
+
+    {% for svc in credentials %}
+    <div class="svc-card" id="svc-{{ svc.service }}">
+      <div class="svc-header">
+        <div class="svc-title">
+          <span class="svc-name">{{ svc.service | capitalize }}</span>
+          <span class="badge {% if svc.connected %}status-success{% else %}tag-badge{% endif %}" id="svc-badge-{{ svc.service }}">
+            {% if svc.connected %}bağlı{% else %}bağlı değil{% endif %}
+          </span>
+        </div>
+        <button class="btn-test" onclick="testService('{{ svc.service }}')" id="btn-test-{{ svc.service }}">
+          Bağlantıyı Test Et
+        </button>
+      </div>
+
+      {% for key in svc.fields %}
+      <div class="cred-row" id="row-{{ svc.service }}-{{ key.env_var }}">
+        <label class="cred-label">
+          <span>{{ key.label }}</span>
+          <code class="env-var-tag">{{ key.env_var }}</code>
+        </label>
+        <div class="cred-input-group">
+          <input
+            type="password"
+            class="cred-input"
+            id="input-{{ svc.service }}-{{ key.env_var }}"
+            placeholder="{% if key.masked %}{{ key.masked }}{% else %}Henüz girilmedi{% endif %}"
+            autocomplete="off"
+          >
+          <button class="cred-save-btn" onclick="saveCredential('{{ svc.service }}', '{{ key.env_var }}', this)">
+            Kaydet
+          </button>
+          {% if key.is_set %}
+          <button class="cred-delete-btn" onclick="deleteCredential('{{ svc.service }}', '{{ key.env_var }}', this)" title="Sil">
+            ✕
+          </button>
+          {% endif %}
+        </div>
+        <span class="cred-status" id="status-{{ svc.service }}-{{ key.env_var }}">
+          {% if key.is_set %}<span style="color:var(--green); font-size:0.78rem;">● Kayıtlı</span>{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+
+      <div class="test-result" id="test-{{ svc.service }}" hidden></div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- ── Depolama ─────────────────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <h2>Depolama</h2>
+      <p>Zone bazında disk kullanımı — <code>{{ config.storage.base_path }}</code></p>
+    </div>
+
+    <div class="storage-zones">
+      {% for zone_name, stats in zone_stats.items() %}
+      <div class="zone-row">
+        <div class="zone-meta">
+          <span class="badge zone-{{ zone_name }}">{{ zone_name }}</span>
+          <span class="zone-size">{{ stats.size_human }}</span>
+        </div>
+        <div class="zone-bar-bg">
+          <div class="zone-bar-fill zone-fill-{{ zone_name }}" style="width: {{ stats.pct }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="db-list">
+      {% for label, stats in db_stats.items() %}
+      <div class="db-row">
+        <span class="db-label">{{ label }}.db</span>
+        <span class="db-size">{{ stats.size_human }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── Plugin Durumu ─────────────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <h2>Plugin Durumu</h2>
+      <p>Otomatik keşfedilen aktif plugin'ler.</p>
+    </div>
+
+    {% set group_labels = {
+      "connectors": "Connectors",
+      "validators": "Validators",
+      "transformers": "Transformers",
+      "exporters": "Exporters",
+      "hooks": "Hooks"
+    } %}
+
+    {% for group, items in plugins.items() %}
+    <div class="plugin-group">
+      <div class="plugin-group-label">{{ group_labels.get(group, group) }}</div>
+      <div class="plugin-chips">
+        {% for p in items %}
+        <div class="plugin-chip">
+          <span class="plugin-chip-name">{{ p.name }}</span>
+          <span class="badge version-badge">v{{ p.version }}</span>
+        </div>
+        {% else %}
+        <span style="font-size:0.82rem; color:var(--text-3);">—</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- ── Konfigürasyon ─────────────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="settings-section-head">
+      <h2>Konfigürasyon</h2>
+      <p>Mevcut <code>config/default.yaml</code> değerleri — salt okunur.</p>
+    </div>
+
+    <div class="config-grid">
+
+      <div class="config-group">
+        <div class="config-group-label">Depolama</div>
+        <dl class="config-dl">
+          <div><dt>Base Path</dt><dd><code>{{ config.storage.base_path }}</code></dd></div>
+          <div><dt>Catalog DB</dt><dd><code>{{ config.storage.catalog_db }}</code></dd></div>
+          <div><dt>Audit DB</dt><dd><code>{{ config.storage.audit_db }}</code></dd></div>
+        </dl>
+      </div>
+
+      <div class="config-group">
+        <div class="config-group-label">İngestion</div>
+        <dl class="config-dl">
+          <div><dt>Varsayılan Connector</dt><dd>{{ config.ingestion.default_connector }}</dd></div>
+          <div><dt>Checksum</dt><dd>{{ config.ingestion.checksum_algorithm }}</dd></div>
+          <div><dt>Mevcut Atla</dt><dd>{{ "Evet" if config.ingestion.skip_existing else "Hayır" }}</dd></div>
+          <div><dt>Hatalıyı Karantinala</dt><dd>{{ "Evet" if config.ingestion.quarantine_on_fail else "Hayır" }}</dd></div>
+        </dl>
+      </div>
+
+      <div class="config-group">
+        <div class="config-group-label">İşleme</div>
+        <dl class="config-dl">
+          <div><dt>Varsayılan Format</dt><dd>{{ config.processing.default_format }}</dd></div>
+          <div><dt>Sıkıştırma</dt><dd>{{ config.processing.compression }} (seviye {{ config.processing.compression_level }})</dd></div>
+          <div><dt>Otomatik Profil</dt><dd>{{ "Evet" if config.processing.auto_profile else "Hayır" }}</dd></div>
+        </dl>
+      </div>
+
+      <div class="config-group">
+        <div class="config-group-label">Versiyonlama</div>
+        <dl class="config-dl">
+          <div><dt>Strateji</dt><dd>{{ config.versioning.strategy }}</dd></div>
+          <div><dt>Tutulacak Versiyon</dt><dd>{{ config.versioning.keep_versions }}</dd></div>
+          <div><dt>Eskiyi Arşivle</dt><dd>{{ "Evet" if config.versioning.archive_older else "Hayır" }}</dd></div>
+        </dl>
+      </div>
+
+      <div class="config-group">
+        <div class="config-group-label">Aktif Pipeline</div>
+        <dl class="config-dl">
+          <div>
+            <dt>Validators</dt>
+            <dd>
+              {% for v in config.validators %}
+              <span class="badge tag-badge">{{ v }}</span>
+              {% endfor %}
+            </dd>
+          </div>
+          <div>
+            <dt>Transformers</dt>
+            <dd>
+              {% for t in config.transformers %}
+              <span class="badge tag-badge">{{ t }}</span>
+              {% endfor %}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="config-group">
+        <div class="config-group-label">Hook'lar</div>
+        <dl class="config-dl">
+          {% for hook_event, hook_list in config.hooks.items() %}
+          <div>
+            <dt>{{ hook_event }}</dt>
+            <dd>
+              {% if hook_list %}
+                {% for h in hook_list %}<span class="badge tag-badge">{{ h }}</span> {% endfor %}
+              {% else %}
+                <span style="color:var(--text-3);">—</span>
+              {% endif %}
+            </dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<style>
+.settings-layout { display: flex; flex-direction: column; gap: 2rem; }
+
+.settings-section {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.settings-section-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.settings-section-head h2 {
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-2);
+}
+.settings-section-head p {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  margin-top: 0.2rem;
+}
+.settings-section-head code {
+  font-size: 0.78rem;
+  background: var(--surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+
+/* Service cards */
+.svc-card {
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.svc-card:last-child { border-bottom: 0; }
+
+.svc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+.svc-title { display: flex; align-items: center; gap: 0.5rem; }
+.svc-name { font-weight: 500; font-size: 0.95rem; }
+
+.btn-test {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  padding: 0.3rem 0.75rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-test:hover { border-color: var(--border-2); color: var(--text); }
+.btn-test:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cred-row { margin-bottom: 0.75rem; }
+.cred-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  margin-bottom: 0.35rem;
+}
+.env-var-tag {
+  font-size: 0.72rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0.05rem 0.35rem;
+  color: var(--text-3);
+}
+
+.cred-input-group { display: flex; gap: 0.4rem; align-items: center; }
+.cred-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.75rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cred-input:focus { border-color: var(--border-2); }
+
+.cred-save-btn {
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.45rem 0.85rem;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.cred-save-btn:hover { filter: brightness(1.06); }
+
+.cred-delete-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.8rem;
+  padding: 0.45rem 0.65rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cred-delete-btn:hover { border-color: var(--red); color: var(--red); }
+
+.cred-status { display: block; margin-top: 0.25rem; min-height: 1rem; }
+
+.test-result {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--r-md);
+  font-size: 0.82rem;
+}
+.test-result.ok   { background: var(--green-bg); color: var(--green); }
+.test-result.fail { background: var(--red-bg);   color: var(--red);   }
+
+/* Storage */
+.storage-zones { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.zone-row {}
+.zone-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3rem; }
+.zone-size { font-size: 0.82rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.zone-bar-bg { height: 6px; background: var(--surface-2); border-radius: var(--r-pill); overflow: hidden; }
+.zone-bar-fill { height: 100%; border-radius: var(--r-pill); min-width: 2px; transition: width 0.4s ease; }
+.zone-fill-raw        { background: #e3806a; }
+.zone-fill-processed  { background: var(--accent); }
+.zone-fill-archive    { background: #8b9acc; }
+.zone-fill-quarantine { background: #cc9a50; }
+
+.db-list {
+  padding: 0 1.25rem 1rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.db-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.82rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.35rem 0.7rem;
+}
+.db-label { color: var(--text-2); font-family: monospace; font-size: 0.78rem; }
+.db-size  { color: var(--text); font-weight: 500; }
+
+/* Plugins */
+.plugin-group {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+.plugin-group:last-child { border-bottom: 0; }
+.plugin-group-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  min-width: 90px;
+  padding-top: 0.2rem;
+}
+.plugin-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.plugin-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.3rem 0.65rem;
+}
+.plugin-chip-name { font-size: 0.82rem; font-weight: 500; }
+
+/* Config */
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.config-group {
+  padding: 1rem 1.25rem;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.config-group:nth-child(even) { border-right: 0; }
+.config-group:nth-last-child(1),
+.config-group:nth-last-child(2) { border-bottom: 0; }
+
+.config-group-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+  margin-bottom: 0.65rem;
+}
+.config-dl { display: flex; flex-direction: column; gap: 0.5rem; }
+.config-dl div { display: flex; flex-direction: column; gap: 0.1rem; }
+.config-dl dt { font-size: 0.75rem; color: var(--text-3); }
+.config-dl dd { font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.config-dl code {
+  font-size: 0.78rem;
+  background: var(--surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .config-grid { grid-template-columns: 1fr; }
+  .config-group { border-right: 0; border-bottom: 1px solid var(--border); }
+  .config-group:last-child { border-bottom: 0; }
+  .plugin-group { flex-direction: column; gap: 0.5rem; }
+}
+</style>
+
+<script>
+async function saveCredential(service, envVar, btn) {
+  const input = document.getElementById(`input-${service}-${envVar}`);
+  const statusEl = document.getElementById(`status-${service}-${envVar}`);
+  const val = input.value.trim();
+  if (!val) return;
+
+  btn.disabled = true;
+  btn.textContent = "Kaydediliyor…";
+
+  const res = await fetch(`/api/v1/credentials/${service}/${envVar}`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({value: val}),
+  });
+  const data = await res.json();
+
+  btn.disabled = false;
+  btn.textContent = "Kaydet";
+
+  if (data.ok) {
+    input.value = "";
+    input.placeholder = data.masked || "●●●●●●●●";
+    statusEl.innerHTML = `<span style="color:var(--green);font-size:0.78rem;">● Kaydedildi</span>`;
+  } else {
+    statusEl.innerHTML = `<span style="color:var(--red);font-size:0.78rem;">Hata: ${data.detail || "bilinmeyen hata"}</span>`;
+  }
+}
+
+async function deleteCredential(service, envVar, btn) {
+  btn.disabled = true;
+  await fetch(`/api/v1/credentials/${service}/${envVar}`, {method: "DELETE"});
+  const row = document.getElementById(`row-${service}-${envVar}`);
+  const input = row.querySelector(".cred-input");
+  const statusEl = document.getElementById(`status-${service}-${envVar}`);
+  input.placeholder = "Henüz girilmedi";
+  btn.remove();
+  statusEl.innerHTML = "";
+}
+
+async function testService(service) {
+  const btn = document.getElementById(`btn-test-${service}`);
+  const resultEl = document.getElementById(`test-${service}`);
+  const badge = document.getElementById(`svc-badge-${service}`);
+
+  btn.disabled = true;
+  btn.textContent = "Test ediliyor…";
+  resultEl.hidden = true;
+  resultEl.className = "test-result";
+
+  const res = await fetch(`/api/v1/credentials/${service}/test`, {method: "POST"});
+  const data = await res.json();
+
+  btn.disabled = false;
+  btn.textContent = "Bağlantıyı Test Et";
+
+  resultEl.hidden = false;
+  resultEl.classList.add(data.ok ? "ok" : "fail");
+  resultEl.textContent = data.message;
+
+  badge.textContent = data.ok ? "bağlı" : "bağlı değil";
+  badge.className = `badge ${data.ok ? "status-success" : "tag-badge"}`;
+}
+</script>
+
+{% endblock %}

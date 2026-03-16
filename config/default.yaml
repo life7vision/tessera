@@ -1,0 +1,71 @@
+project:
+  name: "my-data-archive"
+  version: "0.1.0"
+
+storage:
+  base_path: "./data"
+  zones:
+    raw: "raw"
+    processed: "processed"
+    archive: "archive"
+    quarantine: "quarantine"
+  catalog_db: "catalog.db"
+  audit_db: "audit.db"
+
+ingestion:
+  default_connector: "kaggle"
+  checksum_algorithm: "sha256"
+  skip_existing: true
+  quarantine_on_fail: true
+
+processing:
+  default_format: "parquet"
+  compression: "zstd"
+  compression_level: 3
+  auto_profile: true
+
+versioning:
+  strategy: "semantic"
+  keep_versions: 5
+  archive_older: true
+
+connectors:
+  kaggle:
+    enabled: true
+    credentials_env: "KAGGLE_KEY"
+    download_timeout: 300
+    max_retries: 3
+  huggingface:
+    enabled: true
+    token_env: "HF_TOKEN"
+    download_timeout: 300
+    max_retries: 3
+  github:
+    enabled: true
+    token_env: "GITHUB_TOKEN"
+    download_timeout: 300
+    max_retries: 3
+
+validators:
+  - integrity
+  - schema
+  - quality
+
+transformers:
+  - clean
+  - format
+  - compress
+
+hooks:
+  pre_ingest: []
+  post_ingest:
+    - lineage
+    - notify
+  on_error:
+    - notify
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  file: null
+

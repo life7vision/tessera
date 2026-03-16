@@ -1,0 +1,272 @@
+{
+  "$defs": {
+    "ConnectorConfig": {
+      "additionalProperties": false,
+      "description": "Connector-level configuration.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "credentials_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credentials Env"
+        },
+        "token_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Token Env"
+        },
+        "download_timeout": {
+          "default": 300,
+          "title": "Download Timeout",
+          "type": "integer"
+        },
+        "max_retries": {
+          "default": 3,
+          "title": "Max Retries",
+          "type": "integer"
+        }
+      },
+      "title": "ConnectorConfig",
+      "type": "object"
+    },
+    "IngestionConfig": {
+      "additionalProperties": false,
+      "description": "Ingestion behaviour configuration.",
+      "properties": {
+        "default_connector": {
+          "default": "kaggle",
+          "title": "Default Connector",
+          "type": "string"
+        },
+        "checksum_algorithm": {
+          "default": "sha256",
+          "title": "Checksum Algorithm",
+          "type": "string"
+        },
+        "skip_existing": {
+          "default": true,
+          "title": "Skip Existing",
+          "type": "boolean"
+        },
+        "quarantine_on_fail": {
+          "default": true,
+          "title": "Quarantine On Fail",
+          "type": "boolean"
+        }
+      },
+      "title": "IngestionConfig",
+      "type": "object"
+    },
+    "LoggingConfig": {
+      "additionalProperties": false,
+      "description": "Logging configuration.",
+      "properties": {
+        "level": {
+          "default": "INFO",
+          "title": "Level",
+          "type": "string"
+        },
+        "format": {
+          "default": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+          "title": "Format",
+          "type": "string"
+        },
+        "file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File"
+        }
+      },
+      "title": "LoggingConfig",
+      "type": "object"
+    },
+    "ProcessingConfig": {
+      "additionalProperties": false,
+      "description": "Processing pipeline configuration.",
+      "properties": {
+        "default_format": {
+          "default": "parquet",
+          "title": "Default Format",
+          "type": "string"
+        },
+        "compression": {
+          "default": "zstd",
+          "title": "Compression",
+          "type": "string"
+        },
+        "compression_level": {
+          "default": 3,
+          "maximum": 22,
+          "minimum": 1,
+          "title": "Compression Level",
+          "type": "integer"
+        },
+        "auto_profile": {
+          "default": true,
+          "title": "Auto Profile",
+          "type": "boolean"
+        }
+      },
+      "title": "ProcessingConfig",
+      "type": "object"
+    },
+    "ProjectConfig": {
+      "additionalProperties": false,
+      "description": "Project metadata configuration.",
+      "properties": {
+        "name": {
+          "default": "my-data-archive",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "default": "0.1.0",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "title": "ProjectConfig",
+      "type": "object"
+    },
+    "StorageConfig": {
+      "additionalProperties": false,
+      "description": "Storage layer configuration.",
+      "properties": {
+        "base_path": {
+          "default": "./data",
+          "title": "Base Path",
+          "type": "string"
+        },
+        "zones": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {
+            "raw": "raw",
+            "processed": "processed",
+            "archive": "archive",
+            "quarantine": "quarantine"
+          },
+          "title": "Zones",
+          "type": "object"
+        },
+        "catalog_db": {
+          "default": "catalog.db",
+          "title": "Catalog Db",
+          "type": "string"
+        },
+        "audit_db": {
+          "default": "audit.db",
+          "title": "Audit Db",
+          "type": "string"
+        }
+      },
+      "title": "StorageConfig",
+      "type": "object"
+    },
+    "VersioningConfig": {
+      "additionalProperties": false,
+      "description": "Version management configuration.",
+      "properties": {
+        "strategy": {
+          "default": "semantic",
+          "title": "Strategy",
+          "type": "string"
+        },
+        "keep_versions": {
+          "default": 5,
+          "minimum": 1,
+          "title": "Keep Versions",
+          "type": "integer"
+        },
+        "archive_older": {
+          "default": true,
+          "title": "Archive Older",
+          "type": "boolean"
+        }
+      },
+      "title": "VersioningConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Root application configuration.",
+  "properties": {
+    "project": {
+      "$ref": "#/$defs/ProjectConfig"
+    },
+    "storage": {
+      "$ref": "#/$defs/StorageConfig"
+    },
+    "ingestion": {
+      "$ref": "#/$defs/IngestionConfig"
+    },
+    "processing": {
+      "$ref": "#/$defs/ProcessingConfig"
+    },
+    "versioning": {
+      "$ref": "#/$defs/VersioningConfig"
+    },
+    "connectors": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ConnectorConfig"
+      },
+      "title": "Connectors",
+      "type": "object"
+    },
+    "validators": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Validators",
+      "type": "array"
+    },
+    "transformers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Transformers",
+      "type": "array"
+    },
+    "hooks": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Hooks",
+      "type": "object"
+    },
+    "logging": {
+      "$ref": "#/$defs/LoggingConfig"
+    }
+  },
+  "title": "AppConfig",
+  "type": "object"
+}
