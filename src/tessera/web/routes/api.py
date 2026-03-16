@@ -11,6 +11,30 @@ from pydantic import BaseModel
 router = APIRouter()
 
 
+# ── Metadata preview endpoint ─────────────────────────────────────
+
+@router.get("/datasets/preview")
+async def preview_metadata(request: Request, source: str, ref: str):
+    """Fetch remote metadata for a dataset ref without ingesting it."""
+
+    registry = request.app.state.registry
+    try:
+        connector = registry.get_connector(source)
+        info = connector.fetch_metadata(ref)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    return {
+        "name": info.name,
+        "description": info.description,
+        "tags": info.tags,
+        "license": info.license,
+        "size_bytes": info.size_bytes,
+        "url": info.url,
+        "extra": info.extra_metadata,
+    }
+
+
 # ── Dataset endpoints ──────────────────────────────────────────────
 
 @router.get("/datasets")

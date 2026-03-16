@@ -42,7 +42,7 @@ class KaggleConnector(BaseConnector):
             source="kaggle",
             source_ref=source_ref,
             name=info.get("title") or info.get("datasetSlug", source_ref.split("/")[-1]),
-            description=info.get("subtitle") or info.get("description", ""),
+            description=info.get("description") or info.get("subtitle") or "",
             size_bytes=info.get("totalBytes"),
             file_count=1,
             format_hint=None,
@@ -55,6 +55,9 @@ class KaggleConnector(BaseConnector):
             url=f"https://www.kaggle.com/datasets/{source_ref}",
             extra_metadata={
                 "datasetId": info.get("datasetId"),
+                "owner": info.get("ownerUser"),
+                "subtitle": info.get("subtitle"),
+                "totalViews": info.get("totalViews"),
                 "totalVotes": info.get("totalVotes"),
                 "totalDownloads": info.get("totalDownloads"),
                 "usabilityRating": info.get("usabilityRating"),

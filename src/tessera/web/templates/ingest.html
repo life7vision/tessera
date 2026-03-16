@@ -149,6 +149,35 @@
   gap: 1.5rem;
 }
 
+/* Metadata preview card */
+.meta-preview-card {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.meta-preview-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.meta-preview-desc {
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+}
+.meta-preview-meta {
+  color: var(--text-3);
+  font-size: 0.78rem;
+  margin-top: 0.1rem;
+}
+
 /* Form card */
 .ingest-form-card {
   background: var(--surface);
@@ -384,6 +413,98 @@ function selectSource(btn) {
   const src = btn.dataset.source;
   document.getElementById("source-input").value = src;
   document.getElementById("ref-hint").textContent = HINTS[src] || "";
+}
+
+// ── URL otomatik parse ─────────────────────────────────────────────
+const URL_PATTERNS = [
+  { re: /kaggle\.com\/datasets\/([^/?#]+\/[^/?#]+)/, source: "kaggle" },
+  { re: /kaggle\.com\/competitions\/([^/?#]+)/,       source: "kaggle" },
+  { re: /huggingface\.co\/datasets\/([^/?#]+\/[^/?#]+)/, source: "huggingface" },
+  { re: /github\.com\/([^/?#]+\/[^/?#]+)/,            source: "github" },
+];
+
+function parseUrl(raw) {
+  for (const { re, source } of URL_PATTERNS) {
+    const m = raw.match(re);
+    if (m) return { ref: m[1], source };
+  }
+  return null;
+}
+
+function activateSourceTab(source) {
+  document.querySelectorAll(".source-tab").forEach(b => {
+    if (b.dataset.source === source) {
+      b.classList.add("active");
+      document.getElementById("source-input").value = source;
+    } else {
+      b.classList.remove("active");
+    }
+  });
+}
+
+let _previewTimer = null;
+
+document.getElementById("source-ref").addEventListener("input", function () {
+  const val = this.value.trim();
+
+  // URL parse
+  const parsed = parseUrl(val);
+  if (parsed) {
+    this.value = parsed.ref;
+    activateSourceTab(parsed.source);
+    showToast(`URL algılandı → ${parsed.source}: ${parsed.ref}`, "info", 2500);
+  }
+
+  // Metadata önizleme (300ms debounce)
+  clearTimeout(_previewTimer);
+  const ref = this.value.trim();
+  const source = document.getElementById("source-input").value;
+  if (!ref || ref.split("/").length < 2) { hidePreview(); return; }
+  _previewTimer = setTimeout(() => fetchPreview(source, ref), 400);
+});
+
+async function fetchPreview(source, ref) {
+  try {
+    const res  = await fetch(`/api/v1/datasets/preview?source=${encodeURIComponent(source)}&ref=${encodeURIComponent(ref)}`);
+    if (!res.ok) { hidePreview(); return; }
+    const data = await res.json();
+    showPreview(data);
+  } catch { hidePreview(); }
+}
+
+function showPreview(d) {
+  let el = document.getElementById("meta-preview");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "meta-preview";
+    el.className = "meta-preview-card";
+    document.getElementById("ingest-form").insertBefore(
+      el, document.getElementById("submit-btn")
+    );
+  }
+  el.innerHTML = `
+    <div class="meta-preview-title">${d.name || "—"}</div>
+    ${d.license ? `<span class="badge tag-badge">📄 ${d.license}</span>` : ""}
+    ${(d.tags||[]).map(t => `<span class="badge tag-badge">${t}</span>`).join(" ")}
+    <div class="meta-preview-desc">${(d.description||"").slice(0, 300)}${(d.description||"").length > 300 ? "…" : ""}</div>
+    <div class="meta-preview-meta">
+      ${d.extra?.totalDownloads ? `⬇ ${d.extra.totalDownloads.toLocaleString("tr-TR")} indirme` : ""}
+      ${d.extra?.totalVotes ? `· ⭐ ${d.extra.totalVotes}` : ""}
+      ${d.extra?.owner ? `· 👤 ${d.extra.owner}` : ""}
+    </div>
+  `;
+  el.hidden = false;
+
+  // Etiketleri otomatik doldur
+  const tagsInput = document.getElementById("tags");
+  if (!tagsInput.value && d.tags && d.tags.length) {
+    tagsInput.value = d.tags.join(", ");
+  }
+}
+
+function hidePreview() {
+  const el = document.getElementById("meta-preview");
+  if (el) el.hidden = true;
 }
 
 // ── Form submit ────────────────────────────────────────────────────
