@@ -78,7 +78,9 @@ class PluginRegistry:
         plugin_class = registry.get(name)
         if plugin_class is None:
             raise PluginNotFoundError(f"Plugin bulunamadı: {group}.{name}")
-        plugin_config = self.config.get(group, {}).get(name, {})
+        group_config = self.config.get(group, {})
+        # group_config may be a list (e.g. validators: [integrity, schema]) or a dict
+        plugin_config = group_config.get(name, {}) if isinstance(group_config, dict) else {}
         return plugin_class(plugin_config)
 
     def _discover_namespace(self, package_name: str, base_class: type, target: dict[str, type]) -> None:

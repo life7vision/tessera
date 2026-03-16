@@ -32,7 +32,7 @@ versioning:
 connectors:
   kaggle:
     enabled: true
-    credentials_env: "KAGGLE_KEY"
+    credentials_env: "KAGGLE_API_TOKEN"
     download_timeout: 300
     max_retries: 3
   huggingface:
