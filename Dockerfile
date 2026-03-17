@@ -21,7 +21,7 @@ WORKDIR /app
 
 # Runtime system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    curl git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder

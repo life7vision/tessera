@@ -236,8 +236,9 @@ JobLog.prototype.hideCursor = function () {
 // DonutChart — SVG risk ring renderer
 // =========================================================
 function DonutChart(svgEl, opts) {
+  opts = opts || {};
   this.svg  = svgEl;
-  this.opts = opts || {};
+  this.opts = opts;
   this.r    = opts.r || 46;
   this.cx   = opts.cx || 60;
   this.cy   = opts.cy || 60;
@@ -394,9 +395,9 @@ function confirmModal(message, onConfirm) {
 }
 
 // =========================================================
-// Repos split-panel controller
+// Tiles split-panel controller
 // =========================================================
-var ReposSPA = (function () {
+var TilesSPA = (function () {
   var _listEl   = null;
   var _detailEl = null;
   var _active   = null;
@@ -423,9 +424,9 @@ var ReposSPA = (function () {
     _detailEl.style.display = '';
     _detailEl.innerHTML     = '<div class="ar-loading"><div class="ar-spinner"></div></div>';
 
-    history.replaceState(null, '', '/archiver/repos#' + encodeURIComponent(repoKey));
+    history.replaceState(null, '', '/archiver/tiles#' + encodeURIComponent(repoKey));
 
-    apiFetch('/repos/' + encodeURIComponent(provider) +
+    apiFetch('/tiles/' + encodeURIComponent(provider) +
              '/' + encodeURIComponent(ns) +
              '/' + encodeURIComponent(repo))
       .then(function (data) {
@@ -445,7 +446,7 @@ var ReposSPA = (function () {
     _detailEl.innerHTML     = '';
     _listEl.style.display   = '';
     _active                 = null;
-    history.replaceState(null, '', '/archiver/repos');
+    history.replaceState(null, '', '/archiver/tiles');
   }
 
   function buildDetail(data) {
@@ -456,10 +457,10 @@ var ReposSPA = (function () {
     // Header
     var hdHtml = [
       '<div class="ar-back-bar">',
-        '<button class="ar-back-btn" onclick="ReposSPA.back()">',
+        '<button class="ar-back-btn" onclick="TilesSPA.back()">',
           '<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8">',
           '<path d="M9 2L4 7l5 5"/></svg>',
-          'Repolar',
+          'Tiles',
         '</button>',
       '</div>',
       '<div class="ar-detail-content ar-fade-in">',
@@ -478,12 +479,12 @@ var ReposSPA = (function () {
           '</div>',
         '</div>',
         '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">',
-          '<button class="ar-btn ar-btn-primary" onclick="ReposSPA.archive(\'' + esc(repo.key || '') + '\')">',
+          '<button class="ar-btn ar-btn-primary" onclick="TilesSPA.archive(\'' + esc(repo.key || '') + '\')">',
             '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">',
             '<path d="M2 4h12M2 4v10a1 1 0 001 1h10a1 1 0 001-1V4M6 4V3h4v1"/></svg>',
             'Arşivle',
           '</button>',
-          '<button class="ar-btn" onclick="ReposSPA.scan(\'' + esc(repo.key || '') + '\')">',
+          '<button class="ar-btn" onclick="TilesSPA.scan(\'' + esc(repo.key || '') + '\')">',
             '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">',
             '<circle cx="8" cy="8" r="5"/><path d="M8 5v3l2 2"/></svg>',
             'Tara',
@@ -669,7 +670,7 @@ var ReposSPA = (function () {
   }
 
   return { init: init, loadDetail: loadDetail, back: back, archive: archive, scan: scan };
-})();
+})();  // TilesSPA
 
 // =========================================================
 // Dashboard live feed (job polling)
@@ -738,8 +739,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Export globals needed by templates
-window.Modal     = Modal;
-window.ReposSPA  = ReposSPA;
+window.Modal       = Modal;
+window.TilesSPA    = TilesSPA;
 window.DashboardFeed = DashboardFeed;
 window.Poller    = Poller;
 window.JobLog    = JobLog;
@@ -756,3 +757,125 @@ window.human = human;
 window.fmtDate = fmtDate;
 window.fmtDateShort = fmtDateShort;
 window.toggleFindingGroup = toggleFindingGroup;
+
+// =========================================================
+// Upload Modal
+// =========================================================
+var UploadModal = (function () {
+  var _logLines = [];
+
+  function open() {
+    var overlay = document.getElementById('ar-upload-modal-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () {
+      var inp = document.getElementById('um-repo-input');
+      if (inp) inp.focus();
+    }, 60);
+  }
+
+  function close() {
+    var overlay = document.getElementById('ar-upload-modal-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function copyLog() {
+    var body = document.getElementById('um-log-body');
+    if (!body) return;
+    var text = _logLines.join('\n') || body.innerText;
+    navigator.clipboard.writeText(text).then(function () {
+      showToast('Kopyalandı', 'success');
+    }).catch(function () {});
+  }
+
+  function _setStatus(state, text) {
+    var badge = document.getElementById('um-status-badge');
+    if (!badge) return;
+    badge.className = 'ar-modal-status-badge ' + state;
+    badge.textContent = text;
+  }
+
+  function _appendLog(line) {
+    _logLines.push(line);
+    var body = document.getElementById('um-log-body');
+    var nums = document.getElementById('um-line-nums');
+    if (!body) return;
+    // Clear placeholder on first line
+    if (_logLines.length === 1) body.innerHTML = '';
+    var el = document.createElement('span');
+    el.textContent = line + '\n';
+    body.appendChild(el);
+    if (nums) nums.textContent = Array.from({length: _logLines.length}, function(_, i){ return i+1; }).join('\n');
+    body.parentElement.scrollTop = body.parentElement.scrollHeight;
+  }
+
+  function _initForm() {
+    var btn = document.getElementById('um-submit-btn');
+    if (!btn || btn._bound) return;
+    btn._bound = true;
+
+    btn.addEventListener('click', function () {
+      var repo  = document.getElementById('um-repo-input').value.trim();
+      var force = document.getElementById('um-force-check').checked;
+      var heavy = document.getElementById('um-heavy-check').checked;
+      if (!repo) { showToast('Repo adı giriniz.', 'warning'); return; }
+
+      var logTitle = document.getElementById('um-log-title');
+      var logBody  = document.getElementById('um-log-body');
+      var lineNums = document.getElementById('um-line-nums');
+
+      btn.disabled = true;
+      _logLines = [];
+      if (logBody)  { logBody.innerHTML = ''; }
+      if (lineNums) { lineNums.textContent = '1'; }
+      _setStatus('running', 'running');
+      if (logTitle) logTitle.textContent = 'Output';
+
+      submitArchiveJob(
+        { repo: repo, force: force, include_heavy: heavy },
+        function (jobId) {
+          if (logTitle) logTitle.textContent = 'job/' + jobId.slice(0, 8);
+          _appendLog('Starting job ' + jobId.slice(0, 8) + '…');
+        },
+        function (job) {
+          var newLines = (job.logs || []).slice(_logLines.length);
+          newLines.forEach(function (line) { _appendLog(line); });
+        },
+        function (job) {
+          btn.disabled = false;
+          if (job.status === 'done') {
+            _setStatus('done', 'done');
+            showToast('Upload tamamlandı!', 'success');
+          } else {
+            _setStatus('failed', 'failed');
+            if (job.error) _appendLog('ERROR: ' + job.error);
+            showToast('Hata: ' + (job.error || '?'), 'error');
+          }
+        }
+      );
+    });
+
+    // Enter key on input submits
+    var inp = document.getElementById('um-repo-input');
+    if (inp) {
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') btn.click();
+      });
+    }
+  }
+
+  // Escape key closes
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
+  });
+
+  _initForm();
+
+  return { open: open, close: close, copyLog: copyLog };
+})();
+window.UploadModal = UploadModal;
+// Legacy alias so existing onclick="UploadPanel.toggle()" still works
+window.UploadPanel = { toggle: UploadModal.open, open: UploadModal.open, close: UploadModal.close };

@@ -60,11 +60,11 @@ async def archiver_stats(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Repos
+# Tiles
 # ---------------------------------------------------------------------------
 
-@router.get("/repos")
-async def list_repos(
+@router.get("/tiles")
+async def list_tiles(
     request: Request,
     provider: str = "",
     language: str = "",
@@ -92,8 +92,8 @@ async def list_repos(
     }
 
 
-@router.get("/repos/{provider}/{namespace:path}/{repo}")
-async def get_repo(request: Request, provider: str, namespace: str, repo: str):
+@router.get("/tiles/{provider}/{namespace:path}/{repo}")
+async def get_tile(request: Request, provider: str, namespace: str, repo: str):
     """Tek repo detayı ve versiyonları."""
     state = _archiver_state(request)
     from tessera.archiver.models import RepoRef
@@ -113,8 +113,8 @@ async def get_repo(request: Request, provider: str, namespace: str, repo: str):
     }
 
 
-@router.get("/repos/{provider}/{namespace:path}/{repo}/scan")
-async def get_repo_scan(request: Request, provider: str, namespace: str, repo: str):
+@router.get("/tiles/{provider}/{namespace:path}/{repo}/scan")
+async def get_tile_scan(request: Request, provider: str, namespace: str, repo: str):
     """Reponun güncel scan raporu (bulgular dahil)."""
     state = _archiver_state(request)
     from tessera.archiver.models import RepoRef
@@ -164,6 +164,8 @@ def _run_archive(state, job_id: str, ref, force: bool, include_heavy: bool) -> N
     from tessera.archiver.jobs import get_job_store
     from tessera.archiver.providers import get_provider
     from tessera.archiver.pipeline.archiver import archive_repo
+    from tessera.archiver.pipeline.scanner import scan_archive, save_scan_report
+    from pathlib import Path
 
     job_store = get_job_store()
     job_store.start(job_id)
@@ -181,6 +183,27 @@ def _run_archive(state, job_id: str, ref, force: bool, include_heavy: bool) -> N
         )
         job_store.finish(job_id, success=result["success"], result=result,
                          error=result.get("error") or None)
+
+        # Arşiv başarılıysa otomatik scan → policy zinciri
+        if result.get("success") and not result.get("skipped"):
+            version = result.get("version")
+            if version:
+                try:
+                    version_dir = state.archiver_storage.raw_version_dir(ref, version)
+                    archives = sorted(version_dir.glob("*.tar.gz"))
+                    if archives:
+                        yara_dir = Path(state.archiver_cfg.scanner.yara_rules_dir)
+                        scan = scan_archive(archives[0], yara_rules_dir=yara_dir if yara_dir.exists() else None)
+                        scan.repo_key = ref.key
+                        scan.version = version
+                        scan.archive_id = result.get("archive_id", "")
+                        state.archiver_catalog.save_scan(scan)
+                        save_scan_report(scan, version_dir / "scan_report.json")
+                        job_store.append_log(job_id, f"Otomatik tarama: {ref.key} → {scan.risk_level}")
+                        from tessera.archiver.pipeline.policy_cache import refresh_async
+                        refresh_async(state.archiver_catalog)
+                except Exception as scan_exc:
+                    job_store.append_log(job_id, f"Otomatik tarama başarısız: {scan_exc}")
     except Exception as exc:
         job_store.finish(job_id, success=False, error=str(exc))
 
@@ -265,6 +288,12 @@ def _run_scan(state, job_id: str, repo: str, force: bool) -> None:
         result={"scanned": scanned, "failed": failed},
         error=f"{failed} tarama başarısız" if failed else None,
     )
+    # Scan bitince policy'i otomatik güncelle
+    try:
+        from tessera.archiver.pipeline.policy_cache import refresh_async
+        refresh_async(state.archiver_catalog)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +372,12 @@ def _run_pipeline(state, job_id: str, payload: PipelineRequest) -> None:
         result={"archived": archived, "scanned": scanned, "failed": failed},
         error=f"{failed} işlem başarısız" if failed else None,
     )
+    # Pipeline bitince policy'i otomatik güncelle
+    try:
+        from tessera.archiver.pipeline.policy_cache import refresh_async
+        refresh_async(state.archiver_catalog)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -406,11 +441,14 @@ async def anomalies_report(request: Request):
 
 @router.get("/policy/check")
 async def policy_check(request: Request, allow_missing: bool = False):
-    """Güvenlik politikasını değerlendir."""
+    """Güvenlik politikasını değerlendir ve cache'i güncelle."""
     state = _archiver_state(request)
     from tessera.archiver.pipeline.policy import evaluate_policy
+    from tessera.archiver.pipeline.policy_cache import refresh
+    from datetime import datetime, timezone
+
     result = evaluate_policy(state.archiver_catalog, allow_missing=allow_missing)
-    return {
+    data = {
         "passed": result.passed,
         "summary": result.summary,
         "total_repos": result.total_repos,
@@ -420,7 +458,12 @@ async def policy_check(request: Request, allow_missing: bool = False):
         "total_medium": result.total_medium,
         "total_low": result.total_low,
         "violations": [v.__dict__ for v in result.violations[:100]],
+        "violations_count": len(result.violations),
+        "checked_at": datetime.now(timezone.utc).isoformat(),
     }
+    # Cache'i de güncelle (butona basınca "Yenile" gibi davranır)
+    refresh(state.archiver_catalog)
+    return data
 
 
 # ---------------------------------------------------------------------------

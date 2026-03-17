@@ -16,6 +16,7 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       KAGGLE_API_TOKEN: ${KAGGLE_API_TOKEN:-}
       HF_TOKEN: ${HF_TOKEN:-}
+      TESSERA_CONFIG: /app/config/production.yaml
     volumes:
       # Local modda veri dizinleri mount edilir; S3 modunda gerek yok
       - tessera-data:/app/data

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Audit Log — Archiver — Tessera{% endblock %}
+{% block title %}Audit Log — Mosaic — Tessera{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="/static/archiver.css">
+<link rel="stylesheet" href="/static/archiver.css?v=3">
 <style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
 {% endblock %}
 
@@ -70,7 +70,7 @@
 
         <span class="ar-audit-key">
           {% if repo_key %}
-          <a href="/archiver/repos/{{ repo_key.replace(':', '/') }}"
+          <a href="/archiver/tiles/{{ repo_key.replace(':', '/') }}"
              style="color:var(--accent);" onclick="event.stopPropagation()">
             {{ repo_key }}
           </a>
@@ -98,7 +98,7 @@
   </div>
 </div>
 
-<script src="/static/archiver.js"></script>
+<script src="/static/archiver.js?v=3"></script>
 <script>
 (function () {
   var searchEl  = document.getElementById('ar-audit-search');

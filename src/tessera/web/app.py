@@ -86,6 +86,14 @@ def create_app() -> FastAPI:
         app.state.archiver_catalog = None
         app.state.archiver_storage = None
 
+    # Startup'ta policy'i arka planda otomatik değerlendir
+    if app.state.archiver_catalog is not None:
+        try:
+            from tessera.archiver.pipeline.policy_cache import refresh_async
+            refresh_async(app.state.archiver_catalog)
+        except Exception:
+            pass
+
     app.include_router(pages_router)
     app.include_router(archiver_pages_router)
     app.include_router(api_router, prefix="/api/v1")

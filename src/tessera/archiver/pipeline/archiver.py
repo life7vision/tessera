@@ -322,11 +322,14 @@ def archive_repo(
         _append_audit(storage, "ARCHIVE_SKIPPED", {"repo": display, "reason": "empty_repo"})
         return {"success": True, "skipped": True, "error": ""}
 
-    # -- Disk kontrolü --------------------------------------------------------
+    # -- Disk kontrolü (S3 backend'de sadece geçici alan gerekir) -------------
+    import os as _os
+    _s3_mode = _os.getenv("TESSERA_STORAGE_BACKEND", "local") == "s3"
+    _disk_multiplier = 0.3 if _s3_mode else cfg.pipeline.disk_space_multiplier
     ok, disk_msg = _check_disk(
         repo_info.get("size", 0),
         storage.root,
-        cfg.pipeline.disk_space_multiplier,
+        _disk_multiplier,
     )
     if not ok:
         log.error(disk_msg)
@@ -459,14 +462,36 @@ def archive_repo(
         "checksum": checksum,
     })
 
-    log.info("TAMAMLANDI: %s → %s (%s)", display, next_ver, _human_size(archive_path.stat().st_size))
+    # -- S3 upload (production backend) ----------------------------------------
+    s3_uri = None
+    if _s3_mode:
+        try:
+            from tessera.core.storage_backend import get_archive_backend
+            arch_backend = get_archive_backend()
+            s3_key = f"raw/{ref.namespace}/{ref.repo}/{next_ver}/{archive_path.name}"
+            file_size = archive_path.stat().st_size
+            if file_size > 100 * 1024 * 1024:
+                s3_uri = arch_backend.upload_multipart(archive_path, s3_key)
+            else:
+                s3_uri = arch_backend.upload(archive_path, s3_key)
+            log.info("S3'e yüklendi: %s", s3_uri)
+            # Lokal arşiv dosyasını sil (alan boşalt)
+            archive_path.unlink(missing_ok=True)
+            if bundle_path and bundle_path.exists():
+                bundle_path.unlink(missing_ok=True)
+            if snap_path.exists():
+                snap_path.unlink(missing_ok=True)
+        except Exception as s3_exc:
+            log.warning("S3 upload başarısız (lokal kopya korunuyor): %s", s3_exc)
+
+    log.info("TAMAMLANDI: %s → %s (%s)", display, next_ver, _human_size(archive_path.stat().st_size if archive_path.exists() else ver_rec.size_bytes))
     return {
         "success": True,
         "skipped": False,
         "version": next_ver,
         "archive_id": archive_id,
-        "file": str(archive_path),
-        "size_bytes": archive_path.stat().st_size,
+        "file": s3_uri or str(archive_path),
+        "size_bytes": ver_rec.size_bytes,
         "checksum": checksum,
         "error": "",
     }

@@ -50,7 +50,7 @@ class RepoRef:
           - "torvalds/linux"            → default_provider kullanılır
           - "https://github.com/a/b"   → github:a/b
         """
-        raw = raw.strip()
+        raw = raw.strip().rstrip("/")
 
         # URL formatı
         for prefix, prov in (
@@ -61,7 +61,7 @@ class RepoRef:
                 rest = raw[len(prefix):].rstrip("/")
                 parts = rest.split("/")
                 # group/subgroup/repo → namespace = group/subgroup
-                repo = parts[-1]
+                repo = parts[-1].removesuffix(".git")
                 namespace = "/".join(parts[:-1])
                 return cls(provider=prov, namespace=namespace, repo=repo)
 
@@ -76,7 +76,7 @@ class RepoRef:
         if len(parts) < 2:
             raise ValueError(f"Geçersiz repo referansı: {raw!r}")
 
-        repo = parts[-1]
+        repo = parts[-1].removesuffix(".git")
         namespace = "/".join(parts[:-1])
         return cls(provider=provider, namespace=namespace, repo=repo)
 

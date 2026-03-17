@@ -1,0 +1,129 @@
+project:
+  name: "tessera-archive"
+  version: "0.1.0"
+
+# Storage backend: "local" (default) veya "s3" (production)
+# S3 modunda AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY env'de olmalı
+storage_backend:
+  type: "local"                                    # "local" | "s3"
+  local_root: "/app/data"
+  archive_root: "/app/archive"
+  s3_region: "eu-central-1"
+  s3_bucket_datasets: "tessera-datasets-715557237960"
+  s3_bucket_archives: "tessera-archives-715557237960"
+
+storage:
+  base_path: "/app/data"
+  zones:
+    raw: "raw"
+    processed: "processed"
+    archive: "archive"
+    quarantine: "quarantine"
+  catalog_db: "catalog.db"
+  audit_db: "audit.db"
+
+ingestion:
+  default_connector: "kaggle"
+  checksum_algorithm: "sha256"
+  skip_existing: true
+  quarantine_on_fail: true
+
+processing:
+  default_format: "parquet"
+  compression: "zstd"
+  compression_level: 3
+  auto_profile: true
+
+versioning:
+  strategy: "semantic"
+  keep_versions: 5
+  archive_older: true
+
+connectors:
+  kaggle:
+    enabled: true
+    credentials_env: "KAGGLE_API_TOKEN"
+    download_timeout: 300
+    max_retries: 3
+  huggingface:
+    enabled: true
+    token_env: "HF_TOKEN"
+    download_timeout: 300
+    max_retries: 3
+  github:
+    enabled: true
+    token_env: "GITHUB_TOKEN"
+    download_timeout: 300
+    max_retries: 3
+
+validators:
+  - integrity
+  - schema
+  - quality
+
+transformers:
+  - clean
+  - format
+  - compress
+
+hooks:
+  pre_ingest: []
+  post_ingest:
+    - lineage
+    - notify
+  on_error:
+    - notify
+
+ai_enrichment:
+  enabled: true
+  model: "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  region: "eu-central-1"
+  max_tokens: 1024
+  max_files: 3
+  min_description_length: 80   # mevcut açıklama bundan kısaysa yeniden üret
+
+archiver:
+  enabled: true
+  storage_root: "/app/archive"
+  database: "/app/archive/archiver.db"
+
+  providers:
+    github:
+      token_env: "GITHUB_TOKEN"
+      api_url: "https://api.github.com"
+      timeout_sec: 30
+      retry_count: 3
+      retry_delay: 2
+    gitlab:
+      token_env: "GITLAB_TOKEN"
+      api_url: "https://gitlab.com/api/v4"
+      timeout_sec: 30
+      retry_count: 3
+      retry_delay: 2
+
+  pipeline:
+    lean_archive: true
+    include_git_bundle: true
+    disk_space_multiplier: 1.2
+
+  scanner:
+    max_file_size_mb: 5
+    max_total_mb: 256
+    max_uncompressed_gb: 5
+    yara_rules_dir: "rules/yara"
+
+  policy:
+    max_high: 0
+    max_medium: 0
+    max_risk_level: "LOW"
+    max_scan_age_hours: 24
+
+  ai_enrichment:
+    enabled: true
+    min_description_length: 50
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  file: "/app/data/tessera.log"
+

@@ -57,7 +57,11 @@ async def archiver_dashboard(request: Request):
     from tessera.archiver.jobs import get_job_store
     job_store = get_job_store()
     recent_jobs = [j.to_dict() for j in job_store.all_jobs()[:8]]
+    recent_archive_jobs = [j.to_dict() for j in job_store.all_jobs("archive")[:8]]
     activity = _build_activity_timeline(catalog)
+
+    from tessera.archiver.pipeline.policy_cache import get as get_policy_cache
+    policy_status = get_policy_cache()
 
     return request.app.state.templates.TemplateResponse(
         request,
@@ -66,18 +70,20 @@ async def archiver_dashboard(request: Request):
             "active": "archiver",
             "stats": stats,
             "recent_jobs": recent_jobs,
+            "recent_archive_jobs": recent_archive_jobs,
             "activity": activity,
+            "policy_status": policy_status,
         },
     )
 
 
 # ---------------------------------------------------------------------------
-# Repos
+# Tiles
 # ---------------------------------------------------------------------------
 
 
-@router.get("/repos", response_class=HTMLResponse)
-async def archiver_repos(
+@router.get("/tiles", response_class=HTMLResponse)
+async def archiver_tiles(
     request: Request,
     provider: str = "",
     risk: str = "",
@@ -109,7 +115,7 @@ async def archiver_repos(
 
     return request.app.state.templates.TemplateResponse(
         request,
-        "archiver/repos.html",
+        "archiver/tiles.html",
         {
             "active": "archiver",
             "repos": repos,
@@ -124,12 +130,12 @@ async def archiver_repos(
 
 
 # ---------------------------------------------------------------------------
-# Repo detail
+# Tile detail
 # ---------------------------------------------------------------------------
 
 
-@router.get("/repos/{provider}/{namespace:path}/{repo}", response_class=HTMLResponse)
-async def archiver_repo_detail(
+@router.get("/tiles/{provider}/{namespace:path}/{repo}", response_class=HTMLResponse)
+async def archiver_tile_detail(
     request: Request,
     provider: str,
     namespace: str,
@@ -151,7 +157,7 @@ async def archiver_repo_detail(
 
     return request.app.state.templates.TemplateResponse(
         request,
-        "archiver/repo_detail.html",
+        "archiver/tile_detail.html",
         {
             "active": "archiver",
             "repo": repo_data,
@@ -185,60 +191,7 @@ async def archiver_archive_form(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Scan centre
-# ---------------------------------------------------------------------------
-
-
-@router.get("/scan", response_class=HTMLResponse)
-async def archiver_scan(request: Request):
-    """Scan centre — trigger scans and view results."""
-
-    catalog = _get_archiver_catalog(request)
-    repos = catalog.list_repos(limit=2000) if catalog else []
-
-    from tessera.archiver.jobs import get_job_store
-    job_store = get_job_store()
-    scan_jobs = [j.to_dict() for j in job_store.all_jobs("scan")]
-
-    # Latest scan with actual findings for accordion display
-    latest_findings: list[dict] = []
-    latest_scan_repo = ""
-    latest_risk = ""
-
-    if catalog:
-        for repo in repos:
-            scan = catalog.get_latest_scan(repo.key)
-            if scan and scan.findings:
-                # Group findings by severity
-                groups: dict[str, list] = {}
-                for f in scan.findings:
-                    sev = f.severity or "LOW"
-                    groups.setdefault(sev, []).append(f)
-                order = ["HIGH", "MEDIUM", "LOW"]
-                latest_findings = [
-                    {
-                        "severity": sev,
-                        "count": len(groups[sev]),
-                        "findings": [f.model_dump() for f in groups[sev][:20]],
-                    }
-                    for sev in order if sev in groups
-                ]
-                latest_scan_repo = repo.key
-                latest_risk = scan.risk_level or ""
-                break
-
-    return request.app.state.templates.TemplateResponse(
-        request,
-        "archiver/scan_results.html",
-        {
-            "active": "archiver",
-            "repos": repos,
-            "scan_jobs": scan_jobs,
-            "latest_findings": latest_findings,
-            "latest_scan_repo": latest_scan_repo,
-            "latest_risk": latest_risk,
-        },
-    )
+# Scan — frontend yok, backend otomatik çalışır (Upload → Auto Scan → Auto Policy)
 
 
 # ---------------------------------------------------------------------------
@@ -271,13 +224,16 @@ async def archiver_reports(request: Request):
 
 @router.get("/policy", response_class=HTMLResponse)
 async def archiver_policy(request: Request):
-    """Policy gate status page."""
+    """Policy gate status page — otomatik sonuç gösterir."""
 
     catalog = _get_archiver_catalog(request)
     archiver_config = _get_archiver_config(request)
 
     repos = catalog.list_repos(limit=2000) if catalog else []
     policy_cfg = archiver_config.policy.model_dump() if archiver_config else {}
+
+    from tessera.archiver.pipeline.policy_cache import get as get_policy_cache
+    last_result = get_policy_cache()
 
     return request.app.state.templates.TemplateResponse(
         request,
@@ -286,6 +242,7 @@ async def archiver_policy(request: Request):
             "active": "archiver",
             "repos": repos,
             "policy": policy_cfg,
+            "last_result": last_result,
         },
     )
 
