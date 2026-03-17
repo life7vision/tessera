@@ -1857,3 +1857,64 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
   .detail-layout { grid-template-columns: 1fr; }
   .sidebar-card { order: -1; }
 }
+
+/* =========================================================
+   Archiver module — shared utility classes
+   ========================================================= */
+
+/* Generic button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg, #fff);
+}
+.btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+/* Card component */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.card-header {
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.card-body { padding: 1rem; }
+
+/* Risk badges */
+.badge { display: inline-block; padding: 0.2em 0.55em; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+.risk-high   { background: #3d0000; color: #e05252; }
+.risk-medium { background: #2e1c00; color: #e09a20; }
+.risk-low    { background: #002420; color: #4db6ac; }
+.risk-clean  { background: #002208; color: #43a047; }
+.risk-unknown{ background: var(--surface-2); color: var(--text-3); }
+
+/* Job status badges */
+.status-pending { background: var(--surface-2); color: var(--text-3); }
+.status-running { background: #1a2e4a; color: #4db6e0; }
+.status-done    { background: #002208; color: #43a047; }
+.status-failed  { background: #3d0000; color: #e05252; }
+
+/* Form groups */
+.form-group label { display: block; font-size: 0.85rem; color: var(--text-2); margin-bottom: 0.3rem; }

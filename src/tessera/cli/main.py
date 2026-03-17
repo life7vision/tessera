@@ -58,6 +58,7 @@ from tessera.cli.search import search_cmd  # noqa: E402
 from tessera.cli.stats import stats_cmd  # noqa: E402
 from tessera.cli.init_cmd import init_cmd  # noqa: E402
 from tessera.cli.web_cmd import web_cmd  # noqa: E402
+from tessera.archiver.cli.commands import archiver_cli  # noqa: E402
 
 cli.add_command(init_cmd)
 cli.add_command(ingest_cmd)
@@ -69,3 +70,4 @@ cli.add_command(config_cli)
 cli.add_command(plugin_cli)
 cli.add_command(stats_cmd)
 cli.add_command(web_cmd)
+cli.add_command(archiver_cli)

@@ -92,6 +92,8 @@ class AiEnrichmentConfig(TesseraBaseModel):
 class AppConfig(TesseraBaseModel):
     """Root application configuration."""
 
+    model_config = {"extra": "ignore"}
+
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
     ingestion: IngestionConfig = Field(default_factory=IngestionConfig)
@@ -107,6 +109,7 @@ class AppConfig(TesseraBaseModel):
     hooks: dict[str, list[str]] = Field(default_factory=dict)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     ai_enrichment: AiEnrichmentConfig = Field(default_factory=AiEnrichmentConfig)
+    archiver: dict[str, Any] = Field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a plain dictionary representation."""

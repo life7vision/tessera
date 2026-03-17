@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ repo.namespace }}/{{ repo.repo }} — Archiver — Tessera{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+{% endblock %}
+{% block content %}
+
+<!-- Breadcrumb -->
+<div style="font-size:0.85rem; color:var(--text-3); margin-bottom:0.75rem;">
+  <a href="/archiver" style="color:var(--accent);">Archiver</a> /
+  <a href="/archiver/repos" style="color:var(--accent);">Repolar</a> /
+  <span>{{ repo.namespace }}/{{ repo.repo }}</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>{{ repo.namespace }}/{{ repo.repo }}</h1>
+    {% if repo.description %}
+    <p style="color:var(--text-2); margin-top:0.25rem;">{{ repo.description }}</p>
+    {% endif %}
+  </div>
+  <div style="display:flex; gap:0.5rem;">
+    <a href="/archiver/archive?repo={{ repo.provider }}:{{ repo.namespace }}/{{ repo.repo }}" class="btn btn-primary">Yeniden Arşivle</a>
+    <a href="/archiver/scan?repo={{ repo.provider }}:{{ repo.namespace }}/{{ repo.repo }}" class="btn">Tara</a>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;">
+
+  <!-- Meta -->
+  <div class="card">
+    <div class="card-header">Bilgiler</div>
+    <div class="card-body">
+      <table style="width:100%; font-size:0.9rem;">
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Sağlayıcı</td><td>{{ repo.provider }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Dil</td><td>{{ repo.language or '—' }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Yıldız</td><td>{{ repo.stars or 0 }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Alan</td><td>{{ repo.domain or '—' }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Uygulama Tipi</td><td>{{ repo.app_type or '—' }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Amaç</td><td>{{ repo.purpose or '—' }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Toplam Boyut</td><td>{{ repo.size_human or '—' }}</td></tr>
+        <tr><td style="color:var(--text-3); padding:0.3rem 0;">Son Arşiv</td><td>{{ repo.last_archived_str }}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scan özeti -->
+  <div class="card">
+    <div class="card-header">Son Tarama</div>
+    <div class="card-body">
+      {% if scan %}
+      <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
+        <span class="badge risk-{{ (scan.risk_level or 'unknown')|lower }}" style="font-size:1rem; padding:0.4rem 1rem;">
+          {{ scan.risk_level or '—' }}
+        </span>
+        <div>
+          <div style="font-size:0.85rem; color:var(--text-2);">{{ scan.scanned_at[:10] if scan.scanned_at else '—' }}</div>
+          <div style="font-size:0.8rem; color:var(--text-3);">{{ scan.files_scanned or 0 }} dosya tarandı</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:1.5rem; font-size:0.9rem;">
+        <div><span style="color:#e05252; font-weight:600;">{{ scan.high_count or 0 }}</span> Yüksek</div>
+        <div><span style="color:#e09a20; font-weight:600;">{{ scan.medium_count or 0 }}</span> Orta</div>
+        <div><span style="color:#4db6ac; font-weight:600;">{{ scan.low_count or 0 }}</span> Düşük</div>
+      </div>
+      {% else %}
+      <p style="color:var(--text-3);">Henüz tarama yapılmadı.</p>
+      <a href="/archiver/scan?repo={{ repo.provider }}:{{ repo.namespace }}/{{ repo.repo }}" class="btn" style="margin-top:0.5rem;">Tara</a>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Versions -->
+<div class="card" style="margin-top:1.25rem;">
+  <div class="card-header">Versiyonlar ({{ versions|length }})</div>
+  <div class="table-wrap" style="margin:0; border:none;">
+    <table>
+      <thead>
+        <tr>
+          <th>Versiyon</th>
+          <th>Arşiv ID</th>
+          <th>Tarih</th>
+          <th>Boyut</th>
+          <th>SHA-256</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in versions %}
+        <tr>
+          <td style="font-weight:600; font-family:monospace;">{{ v.version }}</td>
+          <td style="font-family:monospace; font-size:0.75rem; color:var(--text-3);">{{ v.archive_id[:12] }}…</td>
+          <td style="font-size:0.85rem; color:var(--text-2); white-space:nowrap;">{{ v.archived_at.strftime('%Y-%m-%d %H:%M') if v.archived_at else '—' }}</td>
+          <td style="font-size:0.85rem;">{{ v.size_human or '—' }}</td>
+          <td style="font-family:monospace; font-size:0.75rem; color:var(--text-3);">{{ (v.checksum_sha256 or '')[:16] }}…</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align:center; color:var(--text-3); padding:1.5rem;">Versiyon bulunamadı.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

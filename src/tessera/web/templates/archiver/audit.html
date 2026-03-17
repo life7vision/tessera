@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — Archiver — Tessera{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+<style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="ar-root">
+
+  <div class="ar-page-hd">
+    <h1>Audit Log</h1>
+    <div class="ar-page-hd-actions">
+      <form method="get" action="/archiver/audit" style="display:flex;gap:0.5rem;align-items:center;">
+        <label style="font-size:0.82rem;color:var(--text-3);">Son</label>
+        <select name="limit" class="ar-select">
+          {% for n in [25, 50, 100, 250] %}
+          <option value="{{ n }}" {% if n == limit %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="ar-btn">Göster</button>
+      </form>
+      <a href="/archiver" class="ar-btn">← Dashboard</a>
+    </div>
+  </div>
+
+  {# ── Filter bar ─────────────────────────────────────────── #}
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 2rem;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+    <input id="ar-audit-search" class="ar-search" placeholder="Repo veya olay filtrele…"
+           style="max-width:280px;" autocomplete="off">
+    <select id="ar-audit-evt-filter" class="ar-select">
+      <option value="">Tüm Olaylar</option>
+      <option value="ARCHIVE">ARCHIVE</option>
+      <option value="SCAN">SCAN</option>
+      <option value="VERIFY">VERIFY</option>
+      <option value="POLICY">POLICY</option>
+    </select>
+    <span style="margin-left:auto;font-size:0.8rem;color:var(--text-3);" id="ar-audit-count">
+      {{ entries | length }} kayıt
+    </span>
+  </div>
+
+  {# ── Log rows ───────────────────────────────────────────── #}
+  <div style="padding:0 2rem 2rem;">
+
+    {# Header row #}
+    <div class="ar-audit-row" style="font-size:0.72rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--border);">
+      <span>Zaman</span>
+      <span>Olay</span>
+      <span>Repo</span>
+      <span style="text-align:right;">Önceki Hash</span>
+    </div>
+
+    <div id="ar-audit-rows">
+      {% for entry in entries %}
+      {% set evt = entry.get('event') or entry.get('action') or '' %}
+      {% set repo_key = entry.get('repo_key') or '' %}
+      <div class="ar-audit-row"
+           data-evt="{{ evt | upper }}"
+           data-key="{{ repo_key | lower }}">
+
+        <span class="ar-audit-ts">
+          {{ (entry.get('ts') or entry.get('timestamp') or '')[:19].replace('T', ' ') }}
+        </span>
+
+        <span class="ar-audit-evt ar-evt-{{ evt | lower | truncate(10, True, '') }}">
+          {{ evt or '—' }}
+        </span>
+
+        <span class="ar-audit-key">
+          {% if repo_key %}
+          <a href="/archiver/repos/{{ repo_key.replace(':', '/') }}"
+             style="color:var(--accent);" onclick="event.stopPropagation()">
+            {{ repo_key }}
+          </a>
+          {% else %}—{% endif %}
+        </span>
+
+        <span class="ar-audit-hash">
+          {% set ph = entry.get('prev_hash') or '' %}
+          {% if ph %}
+          <span class="ar-chain-dot" title="Zincir sağlıklı"></span>{{ ph[:12] }}…
+          {% else %}—{% endif %}
+        </span>
+
+      </div>
+      {% else %}
+      <div class="ar-empty" style="padding:3rem;">
+        <svg viewBox="0 0 48 48" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M8 12h32M8 20h20M8 28h24M8 36h16"/>
+        </svg>
+        <p>Audit kaydı bulunamadı.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/archiver.js"></script>
+<script>
+(function () {
+  var searchEl  = document.getElementById('ar-audit-search');
+  var evtFilter = document.getElementById('ar-audit-evt-filter');
+  var countEl   = document.getElementById('ar-audit-count');
+  var rows      = document.querySelectorAll('#ar-audit-rows .ar-audit-row');
+
+  function filter() {
+    var q   = searchEl.value.toLowerCase().trim();
+    var evt = evtFilter.value.toUpperCase();
+    var visible = 0;
+    rows.forEach(function (row) {
+      var show = true;
+      if (q   && !row.dataset.key.includes(q) && !row.dataset.evt.toLowerCase().includes(q)) show = false;
+      if (evt && row.dataset.evt !== evt) show = false;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    countEl.textContent = visible + ' kayıt';
+  }
+
+  searchEl.addEventListener('input', filter);
+  evtFilter.addEventListener('change', filter);
+})();
+</script>
+{% endblock %}

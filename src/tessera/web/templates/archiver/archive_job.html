@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Arşivle — Archiver — Tessera{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+<style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="ar-root">
+
+  <div class="ar-page-hd">
+    <h1>Repo Arşivle</h1>
+    <a href="/archiver" class="ar-btn">← Dashboard</a>
+  </div>
+
+  <div style="display:grid; grid-template-columns:380px 1fr; gap:1.5rem; padding:1.5rem 2rem; align-items:start;">
+
+    {# ── Form ──────────────────────────────────────────────── #}
+    <div class="ar-card">
+      <div class="ar-card-hd">Yeni Arşiv İşi</div>
+      <div class="ar-card-body" style="display:flex;flex-direction:column;gap:1rem;">
+
+        <div class="ar-form-group">
+          <label class="ar-label" for="ar-repo-input">Repo (provider:namespace/repo)</label>
+          <input type="text" id="ar-repo-input" class="ar-input"
+                 placeholder="github:torvalds/linux"
+                 value="{{ request.query_params.get('repo', '') }}"
+                 autocomplete="off">
+          <span class="ar-form-hint">github:, gitlab: veya sadece namespace/repo</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <label class="ar-checkbox-row">
+            <input type="checkbox" id="ar-force-check"> Zorla yeniden arşivle
+          </label>
+          <label class="ar-checkbox-row">
+            <input type="checkbox" id="ar-heavy-check"> Ağır dosyaları dahil et
+          </label>
+        </div>
+
+        <button id="ar-submit-btn" class="ar-btn ar-btn-primary" style="width:100%;justify-content:center;">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M2 4h12M2 4v10a1 1 0 001 1h10a1 1 0 001-1V4M6 4V3h4v1"/>
+          </svg>
+          Arşivlemeyi Başlat
+        </button>
+
+        {# Status indicator #}
+        <div id="ar-submit-status" style="display:none;">
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.83rem;color:var(--text-2);">
+            <span class="ar-pulse"></span>
+            <span id="ar-status-label">Başlatılıyor…</span>
+          </div>
+        </div>
+
+        {# Log terminal #}
+        <div class="ar-log-terminal" id="ar-log-box" style="display:none;">
+          <div class="ar-log-toolbar">
+            <span class="ar-log-dot" style="background:#e05252"></span>
+            <span class="ar-log-dot" style="background:#e09a20"></span>
+            <span class="ar-log-dot" style="background:#4caf50"></span>
+            <span class="ar-log-title" id="ar-log-title">başlatılıyor…</span>
+          </div>
+          <div class="ar-log-body" id="ar-log-body"></div>
+        </div>
+
+      </div>
+    </div>
+
+    {# ── Recent jobs table ─────────────────────────────────── #}
+    <div class="ar-card">
+      <div class="ar-card-hd">
+        <span>Arşiv İşleri</span>
+        <span class="ar-count-badge">{{ jobs | length }}</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="ar-ver-table">
+          <thead>
+            <tr>
+              <th>Durum</th>
+              <th>Repo</th>
+              <th>Başlangıç</th>
+              <th>Süre</th>
+              <th>Sonuç</th>
+            </tr>
+          </thead>
+          <tbody id="ar-jobs-tbody">
+            {% for job in jobs %}
+            <tr>
+              <td><span class="ar-badge ar-status-{{ job.status }}">{{ job.status }}</span></td>
+              <td class="ar-td-mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {{ job.repo_key or '—' }}
+              </td>
+              <td class="ar-td-muted">{{ (job.started_at or '')[:16].replace('T', ' ') }}</td>
+              <td class="ar-td-muted">
+                {% if job.finished_at and job.started_at %}
+                  {# duration is computed client-side for accuracy #}
+                  <span data-start="{{ job.started_at }}" data-end="{{ job.finished_at }}" class="ar-duration">—</span>
+                {% else %}—{% endif %}
+              </td>
+              <td style="font-size:0.78rem;color:var(--text-3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {% if job.result and job.result.version %}
+                  <span class="ar-ver-badge">{{ job.result.version }}</span>
+                {% elif job.error %}
+                  <span style="color:var(--red);">{{ job.error[:60] }}</span>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="ar-empty" style="padding:2rem;text-align:center;">Henüz arşiv işi yok.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/archiver.js"></script>
+<script>
+(function () {
+  var submitBtn  = document.getElementById('ar-submit-btn');
+  var statusEl   = document.getElementById('ar-submit-status');
+  var statusLbl  = document.getElementById('ar-status-label');
+  var logBox     = document.getElementById('ar-log-box');
+  var logTitle   = document.getElementById('ar-log-title');
+  var logBody    = document.getElementById('ar-log-body');
+  var logLines   = [];
+
+  // Duration cells
+  document.querySelectorAll('.ar-duration').forEach(function (el) {
+    try {
+      var ms = new Date(el.dataset.end) - new Date(el.dataset.start);
+      var s = Math.round(ms / 1000);
+      el.textContent = s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+    } catch (_) {}
+  });
+
+  submitBtn.addEventListener('click', function () {
+    var repo  = document.getElementById('ar-repo-input').value.trim();
+    var force = document.getElementById('ar-force-check').checked;
+    var heavy = document.getElementById('ar-heavy-check').checked;
+
+    if (!repo) {
+      showToast('Repo adı giriniz.', 'warning');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    statusEl.style.display = '';
+    statusLbl.textContent  = 'Başlatılıyor…';
+    logBox.style.display   = '';
+    logLines = [];
+    logBody.innerHTML = '';
+
+    submitArchiveJob(
+      { repo: repo, force: force, include_heavy: heavy },
+      function (jobId) {
+        statusLbl.textContent = 'Job: ' + jobId.slice(0, 8) + '…';
+        logTitle.textContent  = 'job/' + jobId.slice(0, 8);
+      },
+      function (job) {
+        var newLines = (job.logs || []).slice(logLines.length);
+        logLines = job.logs || [];
+        newLines.forEach(function (line) {
+          var el = document.createElement('div');
+          el.className = 'ar-log-line';
+          el.textContent = line;
+          logBody.appendChild(el);
+        });
+        logBody.scrollTop = logBody.scrollHeight;
+      },
+      function (job) {
+        submitBtn.disabled = false;
+        if (job.status === 'done') {
+          statusLbl.textContent = '✓ Tamamlandı';
+          showToast('Arşiv başarıyla tamamlandı!', 'success');
+        } else {
+          statusLbl.textContent = '✗ Başarısız';
+          showToast('Arşiv hatası: ' + (job.error || '?'), 'error');
+        }
+      }
+    );
+  });
+})();
+</script>
+{% endblock %}

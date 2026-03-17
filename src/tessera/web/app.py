@@ -65,7 +65,29 @@ def create_app() -> FastAPI:
 
     from tessera.web.routes.api import router as api_router
     from tessera.web.routes.pages import router as pages_router
+    from tessera.web.routes.archiver_pages import router as archiver_pages_router
+    from tessera.web.routes.archiver_api import router as archiver_api_router
+
+    # Archiver state — lazy init so startup doesn't fail if archiver is unconfigured
+    try:
+        from tessera.archiver.config import get_archiver_config
+        from tessera.archiver.catalog import ArchiverCatalog
+        from tessera.archiver.storage import ArchiverStorage
+        _archiver_cfg = get_archiver_config()
+        _archiver_catalog = ArchiverCatalog(_archiver_cfg.database)
+        _archiver_storage = ArchiverStorage(_archiver_cfg.storage_root)
+        app.state.archiver_config  = _archiver_cfg   # pages routes use this name
+        app.state.archiver_cfg     = _archiver_cfg   # API routes use this name
+        app.state.archiver_catalog = _archiver_catalog
+        app.state.archiver_storage = _archiver_storage
+    except Exception:
+        app.state.archiver_config  = None
+        app.state.archiver_cfg     = None
+        app.state.archiver_catalog = None
+        app.state.archiver_storage = None
 
     app.include_router(pages_router)
+    app.include_router(archiver_pages_router)
     app.include_router(api_router, prefix="/api/v1")
+    app.include_router(archiver_api_router, prefix="/api/v1/archiver")
     return app

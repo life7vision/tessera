@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Archiver — Tessera{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+<style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="ar-root">
+
+  {# ── Page header ──────────────────────────────────────────── #}
+  <div class="ar-page-hd">
+    <h1>
+      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M3 7h14M3 7V5a1 1 0 011-1h12a1 1 0 011 1v2M3 7v10a1 1 0 001 1h12a1 1 0 001-1V7M8 11h4"/>
+      </svg>
+      Archiver
+    </h1>
+    <div class="ar-page-hd-actions">
+      <a href="/archiver/archive" class="ar-btn ar-btn-primary">
+        <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M6 1v10M1 6h10"/>
+        </svg>
+        Arşivle
+      </a>
+      <a href="/archiver/scan" class="ar-btn">Tara</a>
+      <a href="/archiver/reports" class="ar-btn">Raporlar</a>
+      <a href="/archiver/repos" class="ar-btn">Tüm Repolar →</a>
+    </div>
+  </div>
+
+  {# ── Stats strip ──────────────────────────────────────────── #}
+  <div class="ar-stats">
+    <div class="ar-stat">
+      <div class="ar-stat-val">{{ stats.total_repos if stats else 0 }}</div>
+      <div class="ar-stat-label">Repo</div>
+    </div>
+    <div class="ar-stat">
+      <div class="ar-stat-val">{{ stats.total_versions if stats else 0 }}</div>
+      <div class="ar-stat-label">Versiyon</div>
+    </div>
+    <div class="ar-stat">
+      <div class="ar-stat-val" style="color:var(--red);">
+        {{ (stats.repos_by_risk.get('HIGH', 0)) if stats else 0 }}
+      </div>
+      <div class="ar-stat-label">Yüksek Risk</div>
+    </div>
+    <div class="ar-stat">
+      <div class="ar-stat-val" style="color:var(--green);">
+        {{ (stats.repos_by_risk.get('CLEAN', 0)) if stats else 0 }}
+      </div>
+      <div class="ar-stat-label">Temiz</div>
+    </div>
+    <div class="ar-stat">
+      <div class="ar-stat-val">{{ stats.total_size_human if stats else '—' }}</div>
+      <div class="ar-stat-label">Toplam</div>
+    </div>
+  </div>
+
+  {# ── Main dashboard grid ───────────────────────────────────── #}
+  <div class="ar-dash-body">
+
+    {# Risk donut ─────────────────────────────────────────────── #}
+    <div class="ar-card">
+      <div class="ar-card-hd">Risk Dağılımı</div>
+      <div class="ar-donut-wrap">
+        <div class="ar-donut-container">
+          <svg class="ar-donut-svg" id="ar-donut" viewBox="0 0 120 120" aria-hidden="true"></svg>
+          <div class="ar-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+            <span style="font-size:1.5rem;font-weight:700;letter-spacing:-0.03em;" id="ar-donut-total">
+              {{ stats.total_repos if stats else 0 }}
+            </span>
+            <span style="font-size:0.7rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">repo</span>
+          </div>
+        </div>
+        <div class="ar-donut-legend" id="ar-donut-legend"></div>
+      </div>
+    </div>
+
+    {# Provider / Language bars ───────────────────────────────── #}
+    <div class="ar-card">
+      <div class="ar-card-hd" id="ar-bars-title">Sağlayıcı Dağılımı</div>
+      <div class="ar-bars" id="ar-bars-content"></div>
+      <div style="display:flex;gap:0.25rem;padding:0.5rem 1rem;border-top:1px solid var(--border);">
+        <button class="ar-btn" style="font-size:0.77rem;padding:0.25rem 0.6rem;" id="ar-bars-provider">Sağlayıcı</button>
+        <button class="ar-btn" style="font-size:0.77rem;padding:0.25rem 0.6rem;" id="ar-bars-lang">Dil</button>
+        <button class="ar-btn" style="font-size:0.77rem;padding:0.25rem 0.6rem;" id="ar-bars-domain">Alan</button>
+      </div>
+    </div>
+
+    {# Live job feed ──────────────────────────────────────────── #}
+    <div class="ar-card" style="display:flex;flex-direction:column;">
+      <div class="ar-card-hd">
+        <span>Canlı İşler</span>
+        <a href="/archiver/archive" style="font-size:0.78rem;color:var(--accent);">Tümü →</a>
+      </div>
+      <div class="ar-job-feed" id="ar-job-feed">
+        <div class="ar-loading"><div class="ar-spinner"></div></div>
+      </div>
+    </div>
+
+    {# 7-day timeline ─────────────────────────────────────────── #}
+    <div class="ar-card ar-dash-timeline">
+      <div class="ar-card-hd">Son 7 Gün Aktivite</div>
+      <div class="ar-timeline-wrap" id="ar-timeline"></div>
+    </div>
+
+  </div>
+
+  {# ── Quick nav ─────────────────────────────────────────────── #}
+  <div style="display:flex;gap:0.75rem;padding:0 2rem 2rem;flex-wrap:wrap;">
+    <a href="/archiver/repos" class="ar-btn">Repo Listesi</a>
+    <a href="/archiver/policy" class="ar-btn">Policy Gate</a>
+    <a href="/archiver/audit" class="ar-btn">Audit Log</a>
+  </div>
+
+</div>
+
+<script src="/static/archiver.js"></script>
+<script>
+(function () {
+  // ── Donut chart ─────────────────────────────────────────────
+  var riskData = {{ (stats.repos_by_risk | tojson) if stats else '{}' }};
+  var ORDER    = ['HIGH', 'MEDIUM', 'LOW', 'CLEAN'];
+  var COLORS   = { HIGH: '#e05252', MEDIUM: '#e09a20', LOW: '#4db6ac', CLEAN: '#43a047' };
+  var LABELS   = { HIGH: 'Yüksek', MEDIUM: 'Orta', LOW: 'Düşük', CLEAN: 'Temiz' };
+
+  var segments = ORDER.filter(function (k) { return riskData[k]; }).map(function (k) {
+    return { label: LABELS[k], value: riskData[k], color: COLORS[k] };
+  });
+
+  var chart = new DonutChart(document.getElementById('ar-donut'));
+  chart.render(segments);
+
+  // Legend
+  var legendEl = document.getElementById('ar-donut-legend');
+  legendEl.innerHTML = ORDER.filter(function (k) { return riskData[k] != null; }).map(function (k) {
+    return [
+      '<div class="ar-donut-row">',
+        '<span class="ar-donut-dot" style="background:' + COLORS[k] + '"></span>',
+        '<span class="ar-donut-row-label">' + LABELS[k] + '</span>',
+        '<span class="ar-donut-row-val">' + (riskData[k] || 0) + '</span>',
+      '</div>',
+    ].join('');
+  }).join('');
+
+  // ── Bar charts ──────────────────────────────────────────────
+  var statsData = {
+    provider: {{ (stats.repos_by_provider | tojson) if stats else '{}' }},
+    lang:     {{ (stats.repos_by_language | tojson) if stats else '{}' }},
+    domain:   {{ (stats.repos_by_domain | tojson) if stats else '{}' }},
+  };
+
+  var barsEl   = document.getElementById('ar-bars-content');
+  var titleEl  = document.getElementById('ar-bars-title');
+
+  function showBars(key, label) {
+    titleEl.textContent = label;
+    var obj  = statsData[key] || {};
+    var data = Object.keys(obj).map(function (k) { return { label: k, value: obj[k] }; })
+                     .sort(function (a, b) { return b.value - a.value; });
+    renderBars(barsEl, data);
+  }
+
+  showBars('provider', 'Sağlayıcı Dağılımı');
+  document.getElementById('ar-bars-provider').addEventListener('click', function () { showBars('provider', 'Sağlayıcı Dağılımı'); });
+  document.getElementById('ar-bars-lang').addEventListener('click',     function () { showBars('lang', 'Dil Dağılımı'); });
+  document.getElementById('ar-bars-domain').addEventListener('click',   function () { showBars('domain', 'Alan Dağılımı'); });
+
+  // ── Activity timeline ───────────────────────────────────────
+  var activity = {{ activity | tojson }};
+  renderTimeline(document.getElementById('ar-timeline'), activity);
+
+  // ── Live job feed ───────────────────────────────────────────
+  DashboardFeed.init(document.getElementById('ar-job-feed'));
+})();
+</script>
+{% endblock %}

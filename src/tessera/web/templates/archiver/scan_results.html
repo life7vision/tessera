@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Tarama — Archiver — Tessera{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+<style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="ar-root">
+
+  <div class="ar-page-hd">
+    <h1>Tarama Merkezi</h1>
+    <a href="/archiver" class="ar-btn">← Dashboard</a>
+  </div>
+
+  <div style="display:grid; grid-template-columns:340px 1fr; gap:1.5rem; padding:1.5rem 2rem; align-items:start;">
+
+    {# ── Scan trigger ──────────────────────────────────────── #}
+    <div class="ar-card">
+      <div class="ar-card-hd">Tarama Başlat</div>
+      <div class="ar-card-body" style="display:flex;flex-direction:column;gap:0.9rem;">
+
+        <div class="ar-form-group">
+          <label class="ar-label" for="ar-scan-repo">Repo seç</label>
+          <select id="ar-scan-repo" class="ar-select" style="width:100%;">
+            <option value="">— Repo seçin —</option>
+            {% for r in repos %}
+            <option value="{{ r.provider }}:{{ r.namespace }}/{{ r.repo }}"
+              {% if request.query_params.get('repo') == r.provider ~ ':' ~ r.namespace ~ '/' ~ r.repo %}selected{% endif %}>
+              {{ r.provider }}:{{ r.namespace }}/{{ r.repo }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button id="ar-scan-btn" class="ar-btn ar-btn-primary" style="width:100%;justify-content:center;">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">
+            <circle cx="8" cy="8" r="5.5"/>
+            <path d="M8 5v3l2 2"/>
+          </svg>
+          Tara
+        </button>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:0.25rem 0;">
+
+        <button id="ar-scan-all-btn" class="ar-btn" style="width:100%;justify-content:center;">
+          Tüm Repoları Tara
+        </button>
+
+        <div id="ar-scan-status" style="display:none;">
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.83rem;color:var(--text-2);">
+            <span class="ar-pulse"></span>
+            <span id="ar-scan-lbl">Taranıyor…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    {# ── Scan jobs + findings ───────────────────────────────── #}
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+      {# Jobs table #}
+      <div class="ar-card">
+        <div class="ar-card-hd">
+          <span>Tarama İşleri</span>
+          <span class="ar-count-badge">{{ scan_jobs | length }}</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="ar-ver-table">
+            <thead>
+              <tr>
+                <th>Durum</th><th>Repo</th><th>Başlangıç</th><th>Risk</th><th>Bulgular</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for job in scan_jobs %}
+              <tr>
+                <td><span class="ar-badge ar-status-{{ job.status }}">{{ job.status }}</span></td>
+                <td class="ar-td-mono">{{ job.repo_key or '—' }}</td>
+                <td class="ar-td-muted">{{ (job.started_at or '')[:16].replace('T', ' ') }}</td>
+                <td>
+                  {% if job.result and job.result.risk_level %}
+                  <span class="ar-badge ar-risk-{{ job.result.risk_level | lower }}">
+                    {{ job.result.risk_level }}
+                  </span>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="ar-td-muted">
+                  {% if job.result %}
+                    {{ job.result.get('total_findings', '—') }}
+                  {% else %}—{% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" style="text-align:center;padding:2rem;color:var(--text-3);">
+                  Henüz tarama işi yok.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# Findings accordion (last scan with findings) #}
+      {% if latest_findings %}
+      <div class="ar-scan-card">
+        <div class="ar-card-hd">
+          <span>Son Tarama Bulguları — {{ latest_scan_repo }}</span>
+          <span class="ar-badge ar-risk-{{ latest_risk | lower }}">{{ latest_risk }}</span>
+        </div>
+        <div class="ar-findings">
+          {% for group in latest_findings %}
+          <div class="ar-finding-group">
+            <div class="ar-finding-group-hd" data-severity="{{ group.severity }}"
+                 onclick="toggleFindingGroup(this)">
+              <svg class="ar-finding-arrow" viewBox="0 0 12 12" width="10" height="10"
+                   fill="none" stroke="currentColor" stroke-width="1.8"
+                   style="transition:transform 0.15s;flex-shrink:0;">
+                <path d="M4 2l4 4-4 4"/>
+              </svg>
+              <span class="ar-badge ar-risk-{{ group.severity | lower }}">{{ group.severity }}</span>
+              <span>{{ group.count }} bulgu</span>
+            </div>
+            <div class="ar-finding-group-body" id="group-{{ group.severity }}">
+              {% for f in group.findings %}
+              <div class="ar-finding-item">
+                <div style="flex:1;">
+                  <div class="ar-finding-file">{{ f.file or '—' }}{% if f.line %}:{{ f.line }}{% endif %}</div>
+                  <div class="ar-finding-desc">{{ f.description or f.category or '—' }}</div>
+                  {% if f.snippet %}
+                  <div class="ar-snippet">{{ f.snippet }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<script src="/static/archiver.js"></script>
+<script>
+(function () {
+  var scanBtn    = document.getElementById('ar-scan-btn');
+  var scanAllBtn = document.getElementById('ar-scan-all-btn');
+  var scanStatus = document.getElementById('ar-scan-status');
+  var scanLbl    = document.getElementById('ar-scan-lbl');
+
+  function startScan(repo) {
+    scanStatus.style.display = '';
+    scanLbl.textContent = 'Taranıyor: ' + (repo === '__all__' ? 'tümü' : repo) + '…';
+    scanBtn.disabled = true;
+    scanAllBtn.disabled = true;
+
+    submitScanJob(repo,
+      function (jobId) {
+        scanLbl.textContent = 'Job: ' + jobId.slice(0, 8) + '…';
+      },
+      function (job) {
+        scanBtn.disabled = false;
+        scanAllBtn.disabled = false;
+        if (job.status === 'done') {
+          var risk = (job.result && job.result.risk_level) || '';
+          showToast('Tarama tamamlandı' + (risk ? ' — ' + risk : ''), 'success');
+          scanStatus.style.display = 'none';
+          setTimeout(function () { location.reload(); }, 1500);
+        } else {
+          showToast('Tarama hatası: ' + (job.error || '?'), 'error');
+          scanStatus.style.display = 'none';
+        }
+      }
+    );
+  }
+
+  scanBtn.addEventListener('click', function () {
+    var repo = document.getElementById('ar-scan-repo').value;
+    if (!repo) { showToast('Repo seçiniz.', 'warning'); return; }
+    startScan(repo);
+  });
+
+  scanAllBtn.addEventListener('click', function () {
+    confirmModal('Tüm repolar taranacak. Bu işlem uzun sürebilir. Devam?', function () {
+      startScan('__all__');
+    });
+  });
+
+  // Auto-open HIGH findings
+  document.querySelectorAll('.ar-finding-group-hd[data-severity="HIGH"]').forEach(function (hd) {
+    toggleFindingGroup(hd);
+  });
+})();
+</script>
+{% endblock %}

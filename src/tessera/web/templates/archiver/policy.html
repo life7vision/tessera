@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Policy Gate — Archiver — Tessera{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+<style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
+{% endblock %}
+
+{% block content %}
+<div class="ar-root">
+
+  <div class="ar-page-hd">
+    <h1>Policy Gate</h1>
+    <div class="ar-page-hd-actions">
+      <button class="ar-btn ar-btn-primary" id="ar-policy-check-btn">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M8 2L3 5v4c0 3 2.5 4.7 5 5.5 2.5-.8 5-2.5 5-5.5V5L8 2z"/>
+        </svg>
+        Policy Kontrol Et
+      </button>
+      <a href="/archiver" class="ar-btn">← Dashboard</a>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:280px 1fr; gap:1.5rem; padding:1.5rem 2rem; align-items:start;">
+
+    {# ── Policy config ─────────────────────────────────────── #}
+    <div class="ar-card">
+      <div class="ar-card-hd">Aktif Politika</div>
+      <div class="ar-card-body">
+        {% if policy %}
+        <table style="width:100%;font-size:0.83rem;border-collapse:collapse;">
+          {% for key, val in policy.items() %}
+          <tr>
+            <td style="padding:0.35rem 0;color:var(--text-3);vertical-align:top;white-space:nowrap;padding-right:0.75rem;">{{ key }}</td>
+            <td style="padding:0.35rem 0;font-family:monospace;word-break:break-all;color:var(--text);">{{ val }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <p style="color:var(--text-3);font-size:0.85rem;">Politika konfigürasyonu yüklenmedi.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Policy result + repo grid ──────────────────────────── #}
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+      {# Result banner #}
+      <div id="ar-policy-result" class="ar-card" style="display:none;">
+        <div class="ar-card-hd" id="ar-policy-result-hd">Kontrol Sonucu</div>
+        <div class="ar-card-body" id="ar-policy-result-body"></div>
+      </div>
+
+      {# Repo tile grid #}
+      <div class="ar-card">
+        <div class="ar-card-hd">
+          <span>Repo Durumları</span>
+          <span class="ar-count-badge">{{ repos | length }}</span>
+        </div>
+        <div class="ar-policy-grid">
+          {% for r in repos %}
+          {% set risk = r.risk_level | upper if r.risk_level else 'UNKNOWN' %}
+          <div class="ar-policy-tile">
+            <div class="ar-policy-tile-repo" title="{{ r.provider }}:{{ r.namespace }}/{{ r.repo }}">
+              {{ r.namespace }}/{{ r.repo }}
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span class="ar-badge ar-risk-{{ risk | lower }}">{{ risk }}</span>
+              <span class="ar-policy-tile-status">
+                {% if risk == 'HIGH' %}
+                <span style="color:var(--red);">✗ Bloke</span>
+                {% elif risk in ['MEDIUM', 'LOW'] %}
+                <span style="color:var(--amber);">⚠ İnceleme</span>
+                {% elif risk == 'CLEAN' %}
+                <span style="color:var(--green);">✓ Geçti</span>
+                {% else %}
+                <span style="color:var(--text-3);">— Taranmadı</span>
+                {% endif %}
+              </span>
+            </div>
+            {% if r.last_archived_at %}
+            <div style="font-size:0.73rem;color:var(--text-3);">{{ r.last_archived_str }}</div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="ar-empty" style="grid-column:1/-1;">
+            <p>Repo bulunamadı.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/static/archiver.js"></script>
+<script>
+document.getElementById('ar-policy-check-btn').addEventListener('click', function () {
+  var btn      = this;
+  var resultEl = document.getElementById('ar-policy-result');
+  var hdEl     = document.getElementById('ar-policy-result-hd');
+  var bodyEl   = document.getElementById('ar-policy-result-body');
+
+  btn.disabled = true;
+  resultEl.style.display = '';
+  hdEl.textContent = 'Kontrol ediliyor…';
+  bodyEl.innerHTML = '<div class="ar-loading"><div class="ar-spinner"></div></div>';
+
+  apiFetch('/policy/check')
+    .then(function (data) {
+      var passed = data.passed !== false;
+      hdEl.textContent = passed ? '✓ Policy Geçti' : '✗ Policy Başarısız';
+      hdEl.style.color = passed ? 'var(--green)' : 'var(--red)';
+
+      bodyEl.innerHTML = [
+        '<div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.88rem;">',
+          '<div><strong>' + (data.total_repos || 0) + '</strong> <span style="color:var(--text-3);">repo</span></div>',
+          '<div><strong>' + (data.scanned_repos || 0) + '</strong> <span style="color:var(--text-3);">tarandı</span></div>',
+          '<div><strong style="color:#e05252;">' + (data.total_high || 0) + '</strong> <span style="color:var(--text-3);">yüksek</span></div>',
+          '<div><strong style="color:#e09a20;">' + (data.total_medium || 0) + '</strong> <span style="color:var(--text-3);">orta</span></div>',
+          data.violations_count ? '<div><strong style="color:var(--red);">' + data.violations_count + '</strong> <span style="color:var(--text-3);">ihlal</span></div>' : '',
+        '</div>',
+        data.violations && data.violations.length
+          ? '<div style="display:flex;flex-direction:column;gap:0.4rem;">' +
+            data.violations.slice(0, 10).map(function (v) {
+              return '<div style="display:flex;gap:0.6rem;align-items:center;font-size:0.82rem;">' +
+                '<span class="ar-badge ar-risk-' + (v.severity || 'medium').toLowerCase() + '">' + esc(v.severity || '?') + '</span>' +
+                '<span class="ar-td-mono">' + esc(v.repo_key || '') + '</span>' +
+                '<span style="color:var(--text-3);">' + esc(v.issue || '') + '</span>' +
+              '</div>';
+            }).join('') + '</div>'
+          : '',
+      ].join('');
+    })
+    .catch(function (err) {
+      hdEl.textContent = 'Hata';
+      bodyEl.innerHTML = '<p style="color:var(--red);">' + esc(err.message) + '</p>';
+    })
+    .finally(function () { btn.disabled = false; });
+});
+</script>
+{% endblock %}

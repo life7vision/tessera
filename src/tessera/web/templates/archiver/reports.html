@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Raporlar — Archiver — Tessera{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/archiver.css">
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1>Raporlar</h1>
+  <div style="display:flex; gap:0.5rem;">
+    <button class="btn" onclick="generateReport('daily')">Günlük</button>
+    <button class="btn" onclick="generateReport('monthly')">Aylık</button>
+    <button class="btn" onclick="generateReport('anomalies')">Anomali</button>
+  </div>
+</div>
+
+<!-- Report tabs -->
+<div style="display:flex; gap:0.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border);">
+  <button class="tab-btn active" data-tab="daily" onclick="switchTab(event,'daily')">Günlük</button>
+  <button class="tab-btn" data-tab="monthly" onclick="switchTab(event,'monthly')">Aylık</button>
+  <button class="tab-btn" data-tab="anomalies" onclick="switchTab(event,'anomalies')">Anomaliler</button>
+  <button class="tab-btn" data-tab="jobs" onclick="switchTab(event,'jobs')">İşler ({{ report_jobs|length }})</button>
+</div>
+
+<div id="tab-daily" class="tab-content">
+  <div class="card">
+    <div class="card-header">Günlük Rapor</div>
+    <div class="card-body" id="daily-content">
+      <p style="color:var(--text-3);">Yüklemek için "Günlük" butonuna tıklayın.</p>
+    </div>
+  </div>
+</div>
+
+<div id="tab-monthly" class="tab-content" style="display:none;">
+  <div class="card">
+    <div class="card-header">Aylık Rapor</div>
+    <div class="card-body" id="monthly-content">
+      <p style="color:var(--text-3);">Yüklemek için "Aylık" butonuna tıklayın.</p>
+    </div>
+  </div>
+</div>
+
+<div id="tab-anomalies" class="tab-content" style="display:none;">
+  <div class="card">
+    <div class="card-header">Anomali Raporu</div>
+    <div class="card-body" id="anomalies-content">
+      <p style="color:var(--text-3);">Yüklemek için "Anomali" butonuna tıklayın.</p>
+    </div>
+  </div>
+</div>
+
+<div id="tab-jobs" class="tab-content" style="display:none;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Durum</th><th>Tip</th><th>Başlangıç</th><th>Bitiş</th></tr>
+      </thead>
+      <tbody>
+        {% for job in report_jobs %}
+        <tr>
+          <td><span class="badge status-{{ job.status }}">{{ job.status }}</span></td>
+          <td style="font-size:0.85rem;">{{ job.job_type }}</td>
+          <td style="font-size:0.8rem; color:var(--text-3);">{{ (job.started_at or '')[:16].replace('T',' ') }}</td>
+          <td style="font-size:0.8rem; color:var(--text-3);">{{ (job.finished_at or '—')[:16].replace('T',' ') }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" style="text-align:center; color:var(--text-3); padding:1.5rem;">Henüz rapor işi yok.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  color: var(--text-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 0.9rem;
+}
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+</style>
+
+<script>
+function switchTab(e, name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).style.display = 'block';
+  e.target.classList.add('active');
+}
+
+async function generateReport(type) {
+  const el = document.getElementById(type + '-content');
+  if (el) el.innerHTML = '<p style="color:var(--text-3);">Yükleniyor…</p>';
+
+  // Switch to tab
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  const tabEl = document.getElementById('tab-' + type);
+  if (tabEl) tabEl.style.display = 'block';
+  const btn = document.querySelector('[data-tab="' + type + '"]');
+  if (btn) btn.classList.add('active');
+
+  try {
+    const res = await fetch('/api/v1/archiver/reports/' + type);
+    const data = await res.json();
+    if (el) el.innerHTML = '<pre style="font-size:0.8rem; overflow:auto; max-height:400px;">' + JSON.stringify(data, null, 2) + '</pre>';
+  } catch (err) {
+    if (el) el.innerHTML = '<p style="color:#e05252;">Hata: ' + err.message + '</p>';
+  }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,33 @@
+services:
+  tessera:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Storage backend — production'da "s3" olacak
+      TESSERA_STORAGE_BACKEND: ${TESSERA_STORAGE_BACKEND:-local}
+      S3_BUCKET_DATASETS: ${S3_BUCKET_DATASETS:-tessera-datasets-715557237960}
+      S3_BUCKET_ARCHIVES: ${S3_BUCKET_ARCHIVES:-tessera-archives-715557237960}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-eu-central-1}
+      # AWS credentials (EC2'de instance role kullanılır, burası boş kalır)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # App keys
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      KAGGLE_API_TOKEN: ${KAGGLE_API_TOKEN:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      # Local modda veri dizinleri mount edilir; S3 modunda gerek yok
+      - tessera-data:/app/data
+      - tessera-archive:/app/archive
+      - ./config:/app/config:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  tessera-data:
+  tessera-archive:
