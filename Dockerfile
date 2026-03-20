@@ -31,6 +31,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy app source
 COPY src/ ./src/
 COPY config/ ./config/
+COPY scripts/ ./scripts/
 
 # Create necessary directories (S3 modunda volume mount gerekmez)
 RUN mkdir -p /app/data /app/archive /app/logs
