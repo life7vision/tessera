@@ -1,0 +1,61 @@
+# football-data.co.uk collection config
+# Used by football_bulk.py as default settings (CLI flags override these)
+
+output_dir: data/football_data
+
+# Season range — 1993 = 1993/94 season
+from_year: 1993
+to_year: 2025
+
+# Delay between HTTP requests (seconds)
+request_delay: 0.5
+
+# Main league codes to collect
+# Remove any you don't need to reduce download size
+main_leagues:
+  # England
+  - E0   # Premier League
+  - E1   # Championship
+  - E2   # League 1
+  - E3   # League 2
+  - EC   # Conference
+
+  # Top 5 Europe
+  - D1   # Germany Bundesliga 1
+  - D2   # Germany Bundesliga 2
+  - I1   # Italy Serie A
+  - I2   # Italy Serie B
+  - SP1  # Spain La Liga
+  - SP2  # Spain Segunda
+  - F1   # France Ligue 1
+  - F2   # France Ligue 2
+
+  # Other Europe
+  - N1   # Netherlands Eredivisie
+  - B1   # Belgium Pro League
+  - P1   # Portugal Liga 1
+  - T1   # Turkey Süper Lig
+  - G1   # Greece Super League
+  - SC0  # Scotland Premier League
+  - SC1  # Scotland Division 1
+  - SC2  # Scotland Division 2
+  - SC3  # Scotland Division 3
+
+# Extra leagues (each is one CSV with all available seasons)
+extra_leagues:
+  - ARG  # Argentina Primera Division
+  - AUT  # Austria Bundesliga
+  - BRA  # Brazil Serie A
+  - CHN  # China Super League
+  - DNK  # Denmark Superliga
+  - FIN  # Finland Veikkausliiga
+  - IRL  # Ireland Premier Division
+  - JPN  # Japan J-League
+  - MEX  # Mexico Liga MX
+  - NOR  # Norway Eliteserien
+  - POL  # Poland Ekstraklasa
+  - ROU  # Romania Liga 1
+  - RUS  # Russia Premier League
+  - SWE  # Sweden Allsvenskan
+  - SUI  # Switzerland Super League
+  - USA  # USA MLS

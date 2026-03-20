@@ -19,7 +19,7 @@ def test_registry_discovers_phase_plugins():
     plugins = registry.list_plugins()
 
     assert plugins == {
-        "connectors": ["github", "huggingface", "kaggle"],
+        "connectors": ["football_data", "github", "huggingface", "kaggle"],
         "validators": ["integrity", "quality", "schema"],
         "transformers": ["clean", "compress", "format"],
         "exporters": ["local", "report"],

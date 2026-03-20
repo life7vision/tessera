@@ -140,7 +140,8 @@ def test_create_app_and_routes(monkeypatch, tmp_path: Path):
     assert "/detail" in route_paths
     assert "/detail/{dataset_id}" in route_paths
     assert "/dataset/{dataset_id}" in route_paths
-    assert "/pipeline" in route_paths
+    assert "/forge/pipeline" in route_paths
+    assert "/pipeline" in route_paths  # legacy redirect → /forge/pipeline
     assert "/api/v1/datasets" in route_paths
     assert "/api/v1/stats" in route_paths
     assert dataset_id
@@ -161,7 +162,6 @@ def test_page_and_api_routes(monkeypatch, tmp_path: Path):
     home = asyncio.run(page_routes.home(request))
     search = asyncio.run(page_routes.search(request, q="demo"))
     detail = asyncio.run(page_routes.detail(request, dataset_id=dataset_id))
-    pipeline = asyncio.run(page_routes.pipeline(request))
     detail_index = asyncio.run(page_routes.detail_index())
     detail_legacy = asyncio.run(page_routes.detail_legacy(dataset_id=dataset_id))
     api_list = asyncio.run(api_routes.list_datasets(request, q="demo"))
@@ -175,8 +175,6 @@ def test_page_and_api_routes(monkeypatch, tmp_path: Path):
     assert "demo-dataset" in search.body.decode("utf-8")
     assert detail.status_code == 200
     assert "Lineage" in detail.body.decode("utf-8")
-    assert pipeline.status_code == 200
-    assert "ingest" in pipeline.body.decode("utf-8")
     assert detail_index.status_code == 307
     assert detail_index.headers["location"] == "/search"
     assert detail_legacy.status_code == 307
