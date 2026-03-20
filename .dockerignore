@@ -16,4 +16,3 @@ docs/
 *.md
 Dockerfile
 docker-compose*.yml
-scripts/
