@@ -12,8 +12,8 @@ from tessera.core.audit import AuditLogger
 from tessera.core.catalog import CatalogManager
 from tessera.core.config import clear_config_cache
 from tessera.web.app import create_app
-from tessera.web.routes import api as api_routes
-from tessera.web.routes import pages as page_routes
+from tessera.web.routes import home_api as api_routes
+from tessera.web.routes import home_pages as page_routes
 
 
 @dataclass

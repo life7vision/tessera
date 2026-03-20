@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from starlette.responses import RedirectResponse
 
-from tessera.web.routes.api import _build_stats_payload
+from tessera.web.routes.home_api import _build_stats_payload
 
 router = APIRouter()
 
@@ -23,29 +23,6 @@ async def home(request: Request):
         {"stats": stats, "active": "home"},
     )
 
-
-@router.get("/datasets", response_class=HTMLResponse)
-async def datasets_page(request: Request):
-    """Render the datasets explorer (split-panel) page."""
-
-    catalog = request.app.state.catalog
-    all_datasets = catalog.search_datasets()
-    sources = sorted({ds["source"] for ds in all_datasets})
-
-    enriched = []
-    for ds in all_datasets:
-        versions = catalog.get_versions(ds["id"])
-        enriched.append({**ds, "version_count": len(versions)})
-
-    return request.app.state.templates.TemplateResponse(
-        request,
-        "datasets.html",
-        {
-            "active": "datasets",
-            "datasets": enriched,
-            "sources": sources,
-        },
-    )
 
 
 @router.get("/search", response_class=HTMLResponse)
@@ -118,42 +95,12 @@ async def detail_legacy(dataset_id: str):
     return RedirectResponse(url=f"/dataset/{dataset_id}", status_code=307)
 
 
-@router.get("/ingest", response_class=HTMLResponse)
-async def ingest_page(request: Request):
-    """Render the ingest form page."""
-
-    registry = request.app.state.registry
-    connectors = sorted(registry._connectors.keys())
-    jobs = request.app.state.job_store.all_jobs()[:10]
-    return request.app.state.templates.TemplateResponse(
-        request,
-        "ingest.html",
-        {
-            "active": "ingest",
-            "connectors": connectors,
-            "jobs": [j.to_dict() for j in jobs],
-        },
-    )
-
-
-@router.get("/pipeline", response_class=HTMLResponse)
-async def pipeline(request: Request):
-    """Render recent pipeline activity."""
-
-    audit = request.app.state.audit
-    entries = audit.get_logs(limit=20)
-    return request.app.state.templates.TemplateResponse(
-        request,
-        "pipeline.html",
-        {"entries": entries, "active": "pipeline"},
-    )
-
 
 @router.get("/settings", response_class=HTMLResponse)
 async def settings(request: Request):
     """Render the settings page."""
 
-    from tessera.web.routes.api import _human_size
+    from tessera.web.routes.home_api import _human_size
     from pathlib import Path
 
     config = request.app.state.config

@@ -79,7 +79,7 @@ async def delete_dataset(request: Request, dataset_id: str):
 @router.get("/datasets/{dataset_id}/preview")
 async def preview_dataset(request: Request, dataset_id: str, version_id: str = ""):
     import asyncio
-    from tessera.web.routes.api import _build_preview
+    from tessera.web.routes.home_api import _build_preview
 
     catalog = request.app.state.catalog
     dataset = catalog.get_dataset(dataset_id)
@@ -143,7 +143,7 @@ class IngestPayload(BaseModel):
 
 @router.post("/ingest")
 async def start_ingest(request: Request, payload: IngestPayload, background_tasks: BackgroundTasks):
-    from tessera.web.routes.api import _run_ingest
+    from tessera.web.routes.home_api import _run_ingest
 
     job_store = request.app.state.job_store
     job = job_store.create_job(payload.source, payload.source_ref, payload.tags, payload.force)

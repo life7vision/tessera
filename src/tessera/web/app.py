@@ -63,8 +63,8 @@ def create_app() -> FastAPI:
     app.state.job_store = job_store
     app.state.templates = templates
 
-    from tessera.web.routes.api import router as api_router
-    from tessera.web.routes.pages import router as pages_router
+    from tessera.web.routes.home_api import router as api_router
+    from tessera.web.routes.home_pages import router as pages_router
     from tessera.web.routes.archiver_pages import router as archiver_pages_router
     from tessera.web.routes.archiver_api import router as archiver_api_router
     from tessera.web.routes.forge_pages import router as forge_pages_router
