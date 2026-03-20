@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Pipeline — Forge{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/forge.css?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="fg-root">
+
+  <div class="fg-page-hd">
+    <h1>
+      <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M10 2L3 7v2l7 5 7-5V7L10 2z"/>
+        <path d="M3 12l7 5 7-5"/>
+      </svg>
+      Forge
+      <span class="fg-page-hd-sub">/ Pipeline</span>
+    </h1>
+    <div class="fg-page-hd-actions">
+      <a href="/forge" class="fg-btn">← Dashboard</a>
+      <a href="/forge/ingest" class="fg-btn fg-btn-primary">Yeni İngest</a>
+    </div>
+  </div>
+
+  <div class="fg-pipeline-body">
+
+    {# ── Jobs ────────────────────────────────────────────── #}
+    <div class="fg-pipeline-col">
+      <div class="fg-ingest-section-title">İngest İşleri</div>
+      <div class="fg-job-list" id="fg-pipeline-jobs">
+        {% if jobs %}
+          {% for job in jobs %}
+          <div class="fg-job-item">
+            <span class="fg-job-dot
+              {%- if job.status == 'running' %} fg-dot-running
+              {%- elif job.status == 'success' %} fg-dot-success
+              {%- elif job.status == 'failed' %} fg-dot-failed
+              {%- else %} fg-dot-pending{% endif %}"></span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8rem">
+                  <span style="font-family:monospace;font-size:0.75rem;color:var(--text-3)">{{ job.source or '?' }}/</span>{{ job.source_ref or '—' }}
+                </span>
+                <span class="fg-job-status
+                  {%- if job.status == 'running' %} fg-status-running
+                  {%- elif job.status == 'success' %} fg-status-success
+                  {%- elif job.status == 'failed' %} fg-status-failed
+                  {%- else %} fg-status-pending{% endif %}">{{ job.status }}</span>
+                <span class="fg-job-time">{{ (job.started_at or '')[:16] | replace('T', ' ') }}</span>
+              </div>
+              {% if job.error_message %}
+              <div style="color:var(--red);font-size:0.72rem;padding-top:0.1rem">{{ job.error_message[:100] }}</div>
+              {% endif %}
+              {% if job.dataset_id %}
+              <div style="font-size:0.72rem;color:var(--text-3);padding-top:0.1rem">
+                Dataset: <a href="/forge/datasets#{{ job.dataset_id }}" style="color:var(--accent)">{{ job.dataset_id[:20] }}</a>
+                {% if job.version %} · {{ job.version }}{% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="color:var(--text-3);font-size:0.82rem;padding:1rem 0">Henüz iş yok.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Audit log ───────────────────────────────────────── #}
+    <div class="fg-pipeline-col" style="border-top:none">
+      <div class="fg-ingest-section-title">Denetim Günlüğü</div>
+      {% if entries %}
+      <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+        <thead>
+          <tr style="text-align:left;border-bottom:1px solid var(--border)">
+            <th style="padding:0.3rem 0.5rem;color:var(--text-3);font-weight:500">Zaman</th>
+            <th style="padding:0.3rem 0.5rem;color:var(--text-3);font-weight:500">Olay</th>
+            <th style="padding:0.3rem 0.5rem;color:var(--text-3);font-weight:500">Kaynak</th>
+            <th style="padding:0.3rem 0.5rem;color:var(--text-3);font-weight:500">Referans</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:0.35rem 0.5rem;color:var(--text-3);white-space:nowrap">{{ (e.created_at or '')[:16] | replace('T', ' ') }}</td>
+            <td style="padding:0.35rem 0.5rem">{{ e.event_type or '—' }}</td>
+            <td style="padding:0.35rem 0.5rem">{{ e.source or '—' }}</td>
+            <td style="padding:0.35rem 0.5rem;font-family:monospace;font-size:0.72rem;color:var(--text-2)">{{ (e.source_ref or '—')[:32] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <div style="color:var(--text-3);font-size:0.82rem;padding:1rem 0">Denetim kaydı yok.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+
+<script src="/static/forge.js?v=1"></script>
+<script>
+// Auto-refresh jobs every 5s
+(function () {
+  var jobsEl = document.getElementById('fg-pipeline-jobs');
+  setInterval(function () {
+    fetch('/api/v1/forge/ingest?limit=20')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.jobs) return;
+        var html = d.jobs.map(function (j) {
+          var dotCls = { running: 'fg-dot-running', success: 'fg-dot-success', failed: 'fg-dot-failed' }[j.status] || 'fg-dot-pending';
+          var stsCls = { running: 'fg-status-running', success: 'fg-status-success', failed: 'fg-status-failed' }[j.status] || 'fg-status-pending';
+          var time = (j.started_at || '').slice(0, 16).replace('T', ' ');
+          var ref = j.source_ref || '—';
+          return '<div class="fg-job-item">' +
+            '<span class="fg-job-dot ' + dotCls + '"></span>' +
+            '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:0.5rem">' +
+              '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8rem">' + fgEsc(ref) + '</span>' +
+              '<span class="fg-job-status ' + stsCls + '">' + fgEsc(j.status) + '</span>' +
+              '<span class="fg-job-time">' + fgEsc(time) + '</span>' +
+            '</div>' +
+            (j.error_message ? '<div style="color:var(--red);font-size:0.72rem;padding-top:0.1rem">' + fgEsc(j.error_message.slice(0, 100)) + '</div>' : '') +
+            '</div></div>';
+        }).join('');
+        if (html) jobsEl.innerHTML = html;
+      })
+      .catch(function () {});
+  }, 5000);
+})();
+</script>
+{% endblock %}
