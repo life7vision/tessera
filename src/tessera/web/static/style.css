@@ -1953,3 +1953,131 @@ tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent);
 
 /* Form groups */
 .form-group label { display: block; font-size: 0.85rem; color: var(--text-2); margin-bottom: 0.3rem; }
+
+/* ─── App Switcher (tsw-*) ───────────────────────────────────── */
+.tsw-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tsw-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.tsw-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tsw-btn-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.tsw-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
+  padding: 0.65rem;
+  z-index: 200;
+  animation: tsw-in 0.12s ease;
+}
+.tsw-popup-left {
+  right: auto;
+  left: 0;
+}
+
+@keyframes tsw-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tsw-popup-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 0.1rem 0.4rem 0.5rem;
+}
+
+.tsw-apps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.tsw-app-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: var(--r-md);
+  text-decoration: none;
+  color: var(--text-2);
+  transition: background 0.1s, color 0.1s;
+}
+.tsw-app-card:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.tsw-app-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tsw-app-home   { background: var(--surface-2); color: var(--text-2); }
+.tsw-app-forge  { background: #2a2f00; color: #cad72d; }
+.tsw-app-mosaic { background: #0a1e2e; color: #3d88d9; }
+
+@media (prefers-color-scheme: light) {
+  .tsw-app-forge  { background: #f5f9e0; color: #6e7a00; }
+  .tsw-app-mosaic { background: #e8f0fb; color: #3d88d9; }
+}
+
+.tsw-app-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+.tsw-popup-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.5rem 0;
+}
+
+.tsw-settings-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  color: var(--text-3);
+  text-decoration: none;
+  transition: background 0.1s, color 0.1s;
+}
+.tsw-settings-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
