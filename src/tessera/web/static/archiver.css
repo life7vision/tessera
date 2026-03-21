@@ -1323,6 +1323,116 @@
 .ar-modal-job-row:last-child { border-bottom: none; }
 
 /* ==========================================================
+   Mosaic sidebar layout (archiver_base.html)
+   ========================================================== */
+
+.ms-body { overflow-x: hidden; }
+
+.ms-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Kenar çubuğu ────────────────────────────────────────── */
+.ms-sidebar {
+  width: 220px;
+  min-width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.ms-sidebar-top {
+  padding: 1.1rem 1rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ms-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.ms-brand-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+}
+
+/* ── Navigasyon ──────────────────────────────────────────── */
+.ms-nav {
+  flex: 1;
+  padding: 0.6rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.ms-nav-label {
+  font-size: 0.67rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 0.6rem 0.6rem 0.2rem;
+  margin-top: 0.1rem;
+  user-select: none;
+}
+
+.ms-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.44rem 0.65rem;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: background 0.1s, color 0.1s;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.ms-nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.ms-nav-item.ms-active {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.ms-nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.4rem 0.6rem;
+}
+
+/* ── Alt alan ────────────────────────────────────────────── */
+.ms-sidebar-footer {
+  padding: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── İçerik alanı ────────────────────────────────────────── */
+.ms-content {
+  flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* ==========================================================
    Tiles list-mode — Claude Console ilham tasarımı
    ========================================================== */
 

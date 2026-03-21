@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Mosaic — Tessera{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/archiver.css?v=4">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="ms-body">
+
+  <div class="ms-layout">
+
+    {# ── Sol kenar çubuğu ──────────────────────────────────── #}
+    <aside class="ms-sidebar">
+
+      <div class="ms-sidebar-top">
+        <a href="/" class="ms-brand" aria-label="Tessera ana sayfa">
+          <svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true">
+            <rect x="1" y="1" width="7" height="7" rx="1.5" fill="#cad72d"/>
+            <rect x="10" y="1" width="7" height="7" rx="1.5" fill="#0f9e79"/>
+            <rect x="1" y="10" width="7" height="7" rx="1.5" fill="#d86b42"/>
+            <rect x="10" y="10" width="7" height="7" rx="1.5" fill="#3d88d9"/>
+          </svg>
+          <span class="ms-brand-name">Mosaic</span>
+        </a>
+      </div>
+
+      <nav class="ms-nav" aria-label="Mosaic navigasyonu">
+
+        <span class="ms-nav-label">Genel</span>
+
+        <a href="/archiver"
+           class="ms-nav-item{% if request.url.path in ['/archiver', '/archiver/'] %} ms-active{% endif %}">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <rect x="2" y="2" width="5" height="5" rx="1"/>
+            <rect x="9" y="2" width="5" height="5" rx="1"/>
+            <rect x="2" y="9" width="5" height="5" rx="1"/>
+            <rect x="9" y="9" width="5" height="5" rx="1"/>
+          </svg>
+          Dashboard
+        </a>
+
+        <a href="/archiver/tiles"
+           class="ms-nav-item{% if 'tiles' in request.url.path %} ms-active{% endif %}">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M2 4h12M2 8h12M2 12h12"/>
+          </svg>
+          Tiles
+        </a>
+
+        <a href="/archiver/archive"
+           class="ms-nav-item{% if request.url.path == '/archiver/archive' %} ms-active{% endif %}">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M3 6h10l-1 7H4L3 6z"/>
+            <path d="M1 4h14"/>
+            <path d="M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1"/>
+          </svg>
+          Arşivle
+        </a>
+
+        <div class="ms-nav-divider"></div>
+        <span class="ms-nav-label">Analiz</span>
+
+        <a href="/archiver/reports"
+           class="ms-nav-item{% if 'reports' in request.url.path %} ms-active{% endif %}">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <rect x="3" y="2" width="10" height="12" rx="1.5"/>
+            <path d="M6 6h4M6 9h4M6 12h2"/>
+          </svg>
+          Raporlar
+        </a>
+
+        <a href="/archiver/policy"
+           class="ms-nav-item{% if 'policy' in request.url.path %} ms-active{% endif %}">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M8 2l5 2v4c0 3-2.5 5.5-5 6-2.5-.5-5-3-5-6V4l5-2z"/>
+          </svg>
+          Politika
+        </a>
+
+        <a href="/archiver/audit"
+           class="ms-nav-item{% if 'audit' in request.url.path %} ms-active{% endif %}">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="8" cy="8" r="6"/>
+            <path d="M8 5v3.5l2.5 1.5"/>
+          </svg>
+          Denetim
+        </a>
+
+      </nav>
+
+      <div class="ms-sidebar-footer">
+        <a href="/" class="ms-nav-item">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M10 3L5 8l5 5"/>
+          </svg>
+          Ana Sayfa
+        </a>
+      </div>
+
+    </aside>
+
+    {# ── Ana içerik ────────────────────────────────────────── #}
+    <main class="ms-content">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+  {% block extra_scripts %}{% endblock %}
+
+</body>
+</html>
