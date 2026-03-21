@@ -2,19 +2,38 @@
 {% block title %}Tiles — Mosaic — Tessera{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="/static/archiver.css?v=3">
+<link rel="stylesheet" href="/static/archiver.css?v=4">
 <style>.shell { width:100%!important; max-width:100%!important; padding:0!important; margin:0!important; }</style>
 {% endblock %}
 
 {% block content %}
 <div class="ar-root" id="ar-root">
 
-  {# ═══════════════════════════════════════════════════════════
-     Stage 1: Grid list view
-     ═══════════════════════════════════════════════════════════ #}
   <div id="ar-list-view">
 
-    {# Toolbar #}
+    {# ── Sayfa başlığı ────────────────────────────────────── #}
+    <div class="ar-tiles-hd">
+      <div>
+        <h1 class="ar-tiles-title">Tiles</h1>
+        <p class="ar-tiles-sub">Arşivlenmiş ve izlenen repolar</p>
+      </div>
+      <div class="ar-tiles-hd-right">
+        <select id="ar-filter-lang" class="ar-lang-select">
+          <option value="">Dil</option>
+          {% for lang in languages %}
+          <option value="{{ lang }}">{{ lang }}</option>
+          {% endfor %}
+        </select>
+        <a href="/archiver/archive" class="ar-btn ar-btn-primary">
+          <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M6 1v10M1 6h10"/>
+          </svg>
+          Arşivle
+        </a>
+      </div>
+    </div>
+
+    {# ── Arama çubuğu ─────────────────────────────────────── #}
     <div class="ar-grid-toolbar">
       <div class="ar-search-wrap">
         <svg class="ar-search-icon" viewBox="0 0 14 14" width="12" height="12"
@@ -24,40 +43,11 @@
         <input id="ar-search" class="ar-search" placeholder="Repo ara…" autocomplete="off"
                value="{{ filter_q }}">
       </div>
-
-      <select id="ar-filter-provider" class="ar-select">
-        <option value="">Tüm Sağlayıcılar</option>
-        {% for p in providers %}
-        <option value="{{ p }}" {% if p == filter_provider %}selected{% endif %}>{{ p }}</option>
-        {% endfor %}
-      </select>
-
-      <select id="ar-filter-risk" class="ar-select">
-        <option value="">Tüm Riskler</option>
-        {% for lv in ['CLEAN', 'LOW', 'MEDIUM', 'HIGH'] %}
-        <option value="{{ lv }}" {% if lv == filter_risk %}selected{% endif %}>{{ lv }}</option>
-        {% endfor %}
-      </select>
-
-      <select id="ar-filter-lang" class="ar-select">
-        <option value="">Tüm Diller</option>
-        {% for lang in languages %}
-        <option value="{{ lang }}">{{ lang }}</option>
-        {% endfor %}
-      </select>
-
       <span class="ar-grid-count" id="ar-grid-count">{{ total }} repo</span>
-
-      <a href="/archiver/archive" class="ar-btn ar-btn-primary" style="margin-left:auto;">
-        <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M6 1v10M1 6h10"/>
-        </svg>
-        Arşivle
-      </a>
     </div>
 
-    {# Card grid #}
-    <div class="ar-grid" id="ar-grid">
+    {# ── Kart listesi ─────────────────────────────────────── #}
+    <div class="ar-grid ar-list-mode" id="ar-grid">
       {% for r in repos %}
       <div class="ar-repo-card"
            data-key="{{ r.provider }}:{{ r.namespace }}/{{ r.repo }}"
@@ -66,37 +56,36 @@
            data-risk="{{ r.risk_level | lower if r.risk_level else 'unknown' }}"
            data-lang="{{ r.language | lower if r.language else '' }}">
 
-        <div class="ar-card-top">
-          <span class="ar-badge ar-provider-{{ r.provider | lower }}">{{ r.provider }}</span>
-          {% if r.risk_level %}
-          <span class="ar-badge ar-risk-{{ r.risk_level | lower }}">{{ r.risk_level }}</span>
-          {% endif %}
-        </div>
+        <div class="ar-card-main">
+          <div class="ar-card-body-inner">
+            <div class="ar-card-ns">{{ r.namespace }}</div>
+            <div class="ar-card-name">{{ r.repo }}</div>
+            {% if r.description %}
+            <div class="ar-card-desc">{{ r.description }}</div>
+            {% endif %}
+            <div class="ar-card-foot">
+              {% if r.language %}
+              <span class="ar-lang-badge">{{ r.language }}</span>
+              {% endif %}
+              {% if r.stars %}
+              <span class="ar-card-meta">★ {{ r.stars }}</span>
+              {% endif %}
+              {% if r.risk_level and r.risk_level != 'CLEAN' %}
+              <span class="ar-badge ar-risk-{{ r.risk_level | lower }}">{{ r.risk_level }}</span>
+              {% endif %}
+              {% if r.last_archived_at %}
+              <span class="ar-card-meta" style="margin-left:auto;">{{ r.last_archived_str }}</span>
+              {% endif %}
+            </div>
+          </div>
 
-        <div>
-          <div class="ar-card-ns">{{ r.namespace }}</div>
-          <div class="ar-card-name">{{ r.repo }}</div>
-        </div>
-
-        {% if r.description %}
-        <div class="ar-card-desc">{{ r.description }}</div>
-        {% endif %}
-
-        <div class="ar-card-foot">
-          {% if r.language %}
-          <span class="ar-card-meta">
-            <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <circle cx="6" cy="6" r="4.5"/>
+          <button class="ar-card-menu-btn" title="Seçenekler" onclick="event.stopPropagation()">
+            <svg viewBox="0 0 4 16" width="4" height="16" fill="currentColor" aria-hidden="true">
+              <circle cx="2" cy="2"  r="1.5"/>
+              <circle cx="2" cy="8"  r="1.5"/>
+              <circle cx="2" cy="14" r="1.5"/>
             </svg>
-            {{ r.language }}
-          </span>
-          {% endif %}
-          {% if r.stars %}
-          <span class="ar-card-meta">★ {{ r.stars }}</span>
-          {% endif %}
-          {% if r.last_archived_at %}
-          <span class="ar-card-meta" style="margin-left:auto;">{{ r.last_archived_str }}</span>
-          {% endif %}
+          </button>
         </div>
 
       </div>
@@ -113,12 +102,8 @@
 
   </div>
 
-  {# ═══════════════════════════════════════════════════════════
-     Stage 2: Detail view (başta gizli)
-     ═══════════════════════════════════════════════════════════ #}
-  <div id="ar-detail-view" class="ar-detail-view" style="display:none">
-    {# JS tarafından doldurulur #}
-  </div>
+  {# ── Detay görünümü (JS tarafından doldurulur) ─────────── #}
+  <div id="ar-detail-view" class="ar-detail-view" style="display:none"></div>
 
 </div>
 
@@ -130,14 +115,12 @@
   var grid       = document.getElementById('ar-grid');
   var searchEl   = document.getElementById('ar-search');
   var countEl    = document.getElementById('ar-grid-count');
-  var selProvider = document.getElementById('ar-filter-provider');
-  var selRisk     = document.getElementById('ar-filter-risk');
-  var selLang     = document.getElementById('ar-filter-lang');
+  var selLang    = document.getElementById('ar-filter-lang');
 
-  // ── Init SPA ──────────────────────────────────────────────
+  // ── SPA init ──────────────────────────────────────────────
   TilesSPA.init(listView, detailView);
 
-  // ── Card clicks ───────────────────────────────────────────
+  // ── Kart tıklamaları ──────────────────────────────────────
   grid.querySelectorAll('.ar-repo-card').forEach(function (card) {
     card.addEventListener('click', function () {
       grid.querySelectorAll('.ar-repo-card').forEach(function (c) { c.classList.remove('active'); });
@@ -146,30 +129,25 @@
     });
   });
 
-  // ── Client-side filtering ─────────────────────────────────
+  // ── İstemci tarafı filtreleme ─────────────────────────────
   function applyFilters() {
-    var q        = searchEl.value.toLowerCase().trim();
-    var provider = selProvider.value.toLowerCase();
-    var risk     = selRisk.value.toLowerCase();
-    var lang     = selLang.value.toLowerCase();
-    var visible  = 0;
+    var q    = searchEl.value.toLowerCase().trim();
+    var lang = selLang.value.toLowerCase();
+    var visible = 0;
 
     grid.querySelectorAll('.ar-repo-card').forEach(function (card) {
       var show = true;
-      if (q        && !card.dataset.name.includes(q))        show = false;
-      if (provider && card.dataset.provider !== provider)     show = false;
-      if (risk     && card.dataset.risk !== risk)             show = false;
-      if (lang     && !card.dataset.lang.includes(lang))      show = false;
+      if (q    && !card.dataset.name.includes(q))    show = false;
+      if (lang && !card.dataset.lang.includes(lang)) show = false;
       card.style.display = show ? '' : 'none';
       if (show) visible++;
     });
 
     countEl.textContent = visible + ' repo';
+    selLang.classList.toggle('ar-lang-select--active', !!selLang.value);
   }
 
   searchEl.addEventListener('input', applyFilters);
-  selProvider.addEventListener('change', applyFilters);
-  selRisk.addEventListener('change', applyFilters);
   selLang.addEventListener('change', applyFilters);
 
   // ── Hash deep-link ────────────────────────────────────────
